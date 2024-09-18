@@ -23,14 +23,13 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   end
 
   def gradient_arguments(element)
-    # Passing in a transformation matrix to the apply_transformations option is supported
-    # by a monkey patch installed by prawn-svg.  Prawn only sees this as a truthy variable.
-    #
-    # See Prawn::SVG::Extensions::AdditionalGradientTransforms for details.
-    base_arguments = { stops: stops, apply_transformations: transform_matrix || true }
-
     arguments = specific_gradient_arguments(element)
-    arguments&.merge(base_arguments)
+    return unless arguments
+
+    arguments[:from] = apply_transform(*arguments[:from])
+    arguments[:to] = apply_transform(*arguments[:to])
+
+    arguments.merge({ stops: stops, apply_transformations: true })
   end
 
   def derive_attribute(name)
@@ -38,6 +37,16 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   end
 
   private
+
+  def apply_transform(x, y)
+    puts transform_matrix.class
+    mat = Matrix[transform_matrix]
+    puts mat.inspect
+    # result = Vector[x, y, 1] *
+    # puts [:a, [x, y]].inspect
+    # puts [:b, result].inspect
+    [x, y]
+  end
 
   def specific_gradient_arguments(element)
     if units == :bounding_box

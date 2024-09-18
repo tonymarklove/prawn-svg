@@ -34,7 +34,7 @@ require 'prawn/svg/document'
 require 'prawn/svg/state'
 
 require 'prawn/svg/extensions/additional_gradient_transforms'
-Prawn::Document.prepend Prawn::SVG::Extensions::AdditionalGradientTransforms
+# Prawn::Document.prepend Prawn::SVG::Extensions::AdditionalGradientTransforms
 
 module Prawn
   Svg = SVG # backwards compatibility
