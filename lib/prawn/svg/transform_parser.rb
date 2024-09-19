@@ -6,7 +6,7 @@ module Prawn::SVG::TransformParser
       case name
       when 'translate'
         x, y = arguments
-        matrix *= Matrix[[1, 0, x_pixels(x.to_f)], [0, 1, -y_pixels(y.to_f)], [0, 0, 1]]
+        matrix *= Matrix[[1, 0, x_pixels(x.to_f)], [0, 1, y_pixels(y.to_f)], [0, 0, 1]]
 
       when 'translateX'
         x = arguments.first
@@ -22,7 +22,7 @@ module Prawn::SVG::TransformParser
 
         case arguments.length
         when 1
-          matrix *= Matrix[[Math.cos(angle), Math.sin(angle), 0], [-Math.sin(angle), Math.cos(angle), 0], [0, 0, 1]]
+          matrix *= Matrix[[Math.cos(angle), -Math.sin(angle), 0], [Math.sin(angle), Math.cos(angle), 0], [0, 0, 1]]
         when 3
           matrix *= Matrix[[1, 0, x_pixels(x.to_f)], [0, 1, -y_pixels(y.to_f)], [0, 0, 1]]
           matrix *= Matrix[[Math.cos(angle), Math.sin(angle), 0], [-Math.sin(angle), Math.cos(angle), 0], [0, 0, 1]]

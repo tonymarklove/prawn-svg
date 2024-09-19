@@ -26,8 +26,17 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     arguments = specific_gradient_arguments(element)
     return unless arguments
 
+    # arguments[:from] = [0, 400]
+    # arguments[:to] = [0, 0]
     arguments[:from] = apply_transform(*arguments[:from])
     arguments[:to] = apply_transform(*arguments[:to])
+
+    puts [:grad_args, arguments].inspect
+
+    arguments[:from][1] = y(arguments[:from][1])
+    arguments[:to][1] = y(arguments[:to][1])
+
+    puts [:grad_args_2, arguments].inspect
 
     arguments.merge({ stops: stops, apply_transformations: true })
   end
@@ -39,13 +48,14 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   private
 
   def apply_transform(x, y)
-    puts transform_matrix.class
-    mat = Matrix[transform_matrix]
+    puts :apply_transform
+    puts transform_matrix.inspect
+    mat = Matrix.rows([transform_matrix[0..1], transform_matrix[2..3], transform_matrix[4..5]]).transpose
     puts mat.inspect
-    # result = Vector[x, y, 1] *
-    # puts [:a, [x, y]].inspect
-    # puts [:b, result].inspect
-    [x, y]
+    result = mat * Vector[x, y, 1]
+    puts [:a, [x, y]].inspect
+    puts [:b, result.to_a].inspect
+    result.to_a
   end
 
   def specific_gradient_arguments(element)
@@ -119,9 +129,9 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
     when [:linear, :user_space]
       @x1 = x(derive_attribute('x1'))
-      @y1 = y(derive_attribute('y1'))
+      @y1 = y_pixels(derive_attribute('y1'))
       @x2 = x(derive_attribute('x2'))
-      @y2 = y(derive_attribute('y2'))
+      @y2 = y_pixels(derive_attribute('y2'))
 
     when [:radial, :bounding_box]
       @cx = parse_zero_to_one(derive_attribute('cx'), 0.5)
