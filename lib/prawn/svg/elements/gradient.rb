@@ -26,15 +26,13 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     arguments = specific_gradient_arguments(element)
     return unless arguments
 
-    # arguments[:from] = [0, 400]
-    # arguments[:to] = [0, 0]
     arguments[:from] = apply_transform(*arguments[:from])
     arguments[:to] = apply_transform(*arguments[:to])
 
     puts [:grad_args, arguments].inspect
 
-    arguments[:from][1] = y(arguments[:from][1])
-    arguments[:to][1] = y(arguments[:to][1])
+    arguments[:from][1] = y(-arguments[:from][1])
+    arguments[:to][1] = y(-arguments[:to][1])
 
     puts [:grad_args_2, arguments].inspect
 
