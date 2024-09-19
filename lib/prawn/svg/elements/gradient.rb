@@ -42,6 +42,8 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   private
 
   def apply_transform(x, y)
+    return [x, y] unless transform_matrix
+
     tm = transform_matrix
 
     mat = Matrix[
