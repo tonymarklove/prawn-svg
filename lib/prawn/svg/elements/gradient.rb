@@ -26,11 +26,9 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     arguments = specific_gradient_arguments(element)
     return unless arguments
 
-    arguments[:from] = apply_transform(*arguments[:from])
-    arguments[:to] = apply_transform(*arguments[:to])
-
-    arguments[:from][1] = y(-arguments[:from][1])
-    arguments[:to][1] = y(-arguments[:to][1])
+    # Convert the y-coords back into PDF page-space
+    arguments[:from][1] = y(arguments[:from][1])
+    arguments[:to][1] = y(arguments[:to][1])
 
     arguments.merge({ stops: stops, apply_transformations: true })
   end
@@ -46,13 +44,14 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
     tm = transform_matrix
 
+    # The second row are all negated, to scale by -1 in the y-axis, which puts
+    # the transform back into SVG-space with y=0 at the top.
     mat = Matrix[
       [tm[0], tm[2], tm[4]],
-      [tm[1], tm[3], tm[5]]
+      [-tm[1], -tm[3], -tm[5]]
     ]
 
     result = mat * Vector[x, y, 1]
-
     result.to_a
   end
 
@@ -67,13 +66,15 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
     case [type, units]
     when [:linear, :bounding_box]
-      from = [bounding_x1 + (width * x1), bounding_y1 - (height * y1)]
-      to   = [bounding_x1 + (width * x2), bounding_y1 - (height * y2)]
+      xp1, yp1 = apply_transform(x1, y1)
+      xp2, yp2 = apply_transform(x2, y2)
+      from = [bounding_x1 + (width * xp1), y(bounding_y1) + (height * yp1)]
+      to   = [bounding_x1 + (width * xp2), y(bounding_y1) + (height * yp2)]
 
       { from: from, to: to }
 
     when [:linear, :user_space]
-      { from: [x1, y1], to: [x2, y2] }
+      { from: apply_transform(x1, y1), to: apply_transform(x2, y2) }
 
     when [:radial, :bounding_box]
       center = [bounding_x1 + (width * cx), bounding_y1 - (height * cy)]
@@ -120,10 +121,10 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   def load_coordinates
     case [type, units]
     when [:linear, :bounding_box]
-      @x1 = parse_zero_to_one(derive_attribute('x1'), 0)
-      @y1 = parse_zero_to_one(derive_attribute('y1'), 0)
-      @x2 = parse_zero_to_one(derive_attribute('x2'), 1)
-      @y2 = parse_zero_to_one(derive_attribute('y2'), 0)
+      @x1 = percentage_or_proportion(derive_attribute('x1'), 0)
+      @y1 = percentage_or_proportion(derive_attribute('y1'), 0)
+      @x2 = percentage_or_proportion(derive_attribute('x2'), 1)
+      @y2 = percentage_or_proportion(derive_attribute('y2'), 0)
 
     when [:linear, :user_space]
       @x1 = x(derive_attribute('x1'))
@@ -132,17 +133,17 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       @y2 = y_pixels(derive_attribute('y2'))
 
     when [:radial, :bounding_box]
-      @cx = parse_zero_to_one(derive_attribute('cx'), 0.5)
-      @cy = parse_zero_to_one(derive_attribute('cy'), 0.5)
-      @fx = parse_zero_to_one(derive_attribute('fx'), cx)
-      @fy = parse_zero_to_one(derive_attribute('fy'), cy)
-      @radius = parse_zero_to_one(derive_attribute('r'), 0.5)
+      @cx = percentage_or_proportion(derive_attribute('cx'), 0.5)
+      @cy = percentage_or_proportion(derive_attribute('cy'), 0.5)
+      @fx = percentage_or_proportion(derive_attribute('fx'), cx)
+      @fy = percentage_or_proportion(derive_attribute('fy'), cy)
+      @radius = percentage_or_proportion(derive_attribute('r'), 0.5)
 
     when [:radial, :user_space]
       @cx = x(derive_attribute('cx') || '50%')
-      @cy = y(derive_attribute('cy') || '50%')
+      @cy = y_pixels(derive_attribute('cy') || '50%')
       @fx = x(derive_attribute('fx') || derive_attribute('cx'))
-      @fy = y(derive_attribute('fy') || derive_attribute('cy'))
+      @fy = y_pixels(derive_attribute('fy') || derive_attribute('cy'))
       @radius = pixels(derive_attribute('r') || '50%')
 
     else
@@ -160,7 +161,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     end
 
     @stops = stop_elements.each.with_object([]) do |child, result|
-      offset = parse_zero_to_one(child.attributes['offset'])
+      offset = percentage_or_proportion(child.attributes['offset'])
 
       # Offsets must be strictly increasing (SVG 13.2.4)
       offset = result.last.first if result.last && result.last.first > offset
@@ -182,12 +183,22 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     end
   end
 
-  def parse_zero_to_one(string, default = 0)
+  def percentage_or_proportion(string, default = 0)
     string = string.to_s.strip
-    return default if string == ''
+    percentage = false
 
-    value = string.to_f
-    value /= 100.0 if string[-1..] == '%'
-    [0.0, value, 1.0].sort[1]
+    if string[-1] == '%'
+      percentage = true
+      string = string[0..-2]
+    end
+
+    value = Float(string, exception: false)
+    return default unless value
+
+    if percentage
+      value / 100.0
+    else
+      value
+    end
   end
 end

@@ -115,7 +115,7 @@ describe Prawn::SVG::Elements::Gradient do
   context 'when gradientTransform is specified' do
     let(:svg) do
       <<-SVG
-        <linearGradient id="flag" gradientTransform="translateX(10) scale(2)" x1="0" y1="0" x2="10" y2="10">
+        <linearGradient id="flag" gradientTransform="translateX(0.5) scale(2)" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="red"/>
           <stop offset="1" stop-color="blue"/>
         </linearGradient>
@@ -123,13 +123,13 @@ describe Prawn::SVG::Elements::Gradient do
     end
 
     it 'passes in the transform via the apply_transformations option' do
-      arguments = element.gradient_arguments(double(bounding_box: [0, 0, 10, 10]))
+      arguments = element.gradient_arguments(double(bounding_box: [100, 100, 200, 0]))
 
       expect(arguments).to eq(
-        from:                  [0, 0],
-        to:                    [10, 10],
+        from:                  [150.0, 100.0],
+        to:                    [350.0, 300.0],
         stops:                 [[0, 'ff0000'], [1, '0000ff']],
-        apply_transformations: [2, 0, 0, 2, 10, 0]
+        apply_transformations: true
       )
     end
   end
