@@ -1,6 +1,6 @@
 class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   attr_reader :parent_gradient
-  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :transform_matrix
+  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :transform_matrix, :gradient_matrix
 
   TAG_NAME_TO_TYPE = {
     'linearGradient' => :linear,
@@ -77,23 +77,32 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       { from: apply_transform(x1, y1), to: apply_transform(x2, y2) }
 
     when [:radial, :bounding_box]
-      center = [bounding_x1 + (width * cx), bounding_y1 - (height * cy)]
-      focus  = [bounding_x1 + (width * fx), bounding_y1 - (height * fy)]
+      cxp, cyp = apply_transform(cx, cy)
+      fxp, fyp = apply_transform(fx, fy)
+      center = [bounding_x1 + (width * cxp), y(bounding_y1) + (height * cyp)]
+      focus  = [bounding_x1 + (width * fxp), y(bounding_y1) + (height * fyp)]
 
-      # NOTE: Chrome, at least, implements radial bounding box radiuses as
-      # having separate X and Y components, so in bounding box mode their
-      # gradients come out as ovals instead of circles.  PDF radial shading
-      # doesn't have the option to do this, and it's confusing why the
-      # Chrome user space gradients don't apply the same logic anyway.
-      hypot = Math.sqrt((width * width) + (height * height))
-      { from: focus, r1: 0, to: center, r2: radius * hypot }
+      @gradient_matrix = calculate_gradient_matrix(center[0], center[1], width, height)
+
+      { from: focus, r1: 0, to: center, r2: radius }
 
     when [:radial, :user_space]
-      { from: [fx, fy], r1: 0, to: [cx, cy], r2: radius }
+      { from: apply_transform(fx, fy), r1: 0, to: apply_transform(cx, cy), r2: radius }
 
     else
       raise 'unexpected type/unit system'
     end
+  end
+
+  def calculate_gradient_matrix(center_x, center_y, box_width, box_height)
+    # Move the center to the origin
+    t1 = Matrix[[1.0, 0.0, -center_x], [0.0, 1.0, center_y], [0.0, 0.0, 1.0]]
+    # Scale by box size
+    s = Matrix[[box_width, 0.0, 0.0], [0.0, box_height, 0.0], [0.0, 0.0, 1.0]]
+    # Move the center back to where it was
+    t2 = Matrix[[1.0, 0.0, center_x], [0.0, 1.0, -center_y], [0.0, 0.0, 1.0]]
+
+    t2 * s * t1
   end
 
   def type

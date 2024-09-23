@@ -57,6 +57,10 @@ module Prawn::SVG::TransformParser
       end
     end
 
+    matrix_for_prawn(matrix)
+  end
+
+  def matrix_for_prawn(matrix)
     matrix.to_a[0..1].transpose.flatten
   end
 
