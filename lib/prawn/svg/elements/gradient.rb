@@ -1,6 +1,6 @@
 class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   attr_reader :parent_gradient
-  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :transform_matrix, :gradient_matrix
+  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :gradient_matrix
 
   TAG_NAME_TO_TYPE = {
     'linearGradient' => :linear,
@@ -26,7 +26,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     arguments = specific_gradient_arguments(element)
     return unless arguments
 
-    # Convert the y-coords back into PDF page-space
+    # Convert the y-coords into PDF page-space
     arguments[:from][1] = y(arguments[:from][1])
     arguments[:to][1] = y(arguments[:to][1])
 
@@ -39,20 +39,12 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
   private
 
+  attr_reader :transform_matrix
+
   def apply_transform(x, y)
     return [x, y] unless transform_matrix
 
-    tm = transform_matrix
-
-    # The second row are all negated, to scale by -1 in the y-axis, which puts
-    # the transform back into SVG-space with y=0 at the top.
-    mat = Matrix[
-      [tm[0], tm[2], tm[4]],
-      [-tm[1], -tm[3], -tm[5]]
-    ]
-
-    result = mat * Vector[x, y, 1]
-    result.to_a
+    (transform_matrix * Vector[x, y, 1]).to_a
   end
 
   def specific_gradient_arguments(element)
@@ -96,27 +88,28 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
   def calculate_gradient_matrix(x, y, width, height)
     # Scaling factors in x and y
-    sx = 1.0
-    sy = 1.0
-
     if width > height
+      sx = 1.0
       sy = height / width
     else
       sx = width / height
+      sy = 1.0
     end
 
-    puts [sx, sy].inspect
+    # # Move the center to the origin
+    # t1 = Matrix[[1.0, 0.0, -x], [0.0, 1.0, y], [0.0, 0.0, 1.0]]
+    # # Scale by box size
+    # s = Matrix[[sx, 0.0, 0.0], [0.0, sy, 0.0], [0.0, 0.0, 1.0]]
+    # # Move the center back to where it was
+    # t2 = Matrix[[1.0, 0.0, x], [0.0, 1.0, -y], [0.0, 0.0, 1.0]]
+    # m1 = t2 * s * t1
 
-    # Move the center to the origin
-    t1 = Matrix[[1.0, 0.0, -x], [0.0, 1.0, y], [0.0, 0.0, 1.0]]
-    # Scale by box size
-    s = Matrix[[sx, 0.0, 0.0], [0.0, sy, 0.0], [0.0, 0.0, 1.0]]
-    # Move the center back to where it was
-    t2 = Matrix[[1.0, 0.0, x], [0.0, 1.0, -y], [0.0, 0.0, 1.0]]
+    m2 = Matrix[[sx, 0.0, (-sx * x) + x], [0.0, sy, (sy * y) - y], [0.0, 0.0, 1.0]]
 
-    # m = Matrix[[sx, 0.0, sx - (sx * x)], [0.0, sy, sy - (sy * y)], [0.0, 0.0, 1.0]]
+    # puts m1.inspect
+    # puts m2.inspect
 
-    t2 * s * t1
+    m2
   end
 
   def type
@@ -133,7 +126,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     @units = derive_attribute('gradientUnits') == 'userSpaceOnUse' ? :user_space : :bounding_box
 
     if (transform = derive_attribute('gradientTransform'))
-      @transform_matrix = parse_transform_attribute(transform)
+      @transform_matrix = parse_transform_attribute(transform, space: :svg)
     end
 
     if (spread_method = derive_attribute('spreadMethod')) && spread_method != 'pad'

@@ -1,12 +1,14 @@
 module Prawn::SVG::TransformParser
-  def parse_transform_attribute(transform)
+  def parse_transform_attribute(transform, space: :pdf)
     matrix = Matrix.identity(3)
+
+    flip = space == :svg ? 1.0 : -1.0
 
     parse_css_method_calls(transform).each do |name, arguments|
       case name
       when 'translate'
         x, y = arguments
-        matrix *= Matrix[[1, 0, x_pixels(x.to_f)], [0, 1, -y_pixels(y.to_f)], [0, 0, 1]]
+        matrix *= Matrix[[1, 0, x_pixels(x.to_f)], [0, 1, flip * y_pixels(y.to_f)], [0, 0, 1]]
 
       when 'translateX'
         x = arguments.first
@@ -14,19 +16,25 @@ module Prawn::SVG::TransformParser
 
       when 'translateY'
         y = arguments.first
-        matrix *= Matrix[[1, 0, 0], [0, 1, -y_pixels(y.to_f)], [0, 0, 1]]
+        matrix *= Matrix[[1, 0, 0], [0, 1, flip * y_pixels(y.to_f)], [0, 0, 1]]
 
       when 'rotate'
         angle, x, y = arguments.collect(&:to_f)
         angle = angle * Math::PI / 180.0
 
+        rotation_matrix = Matrix[
+          [Math.cos(angle), -flip * Math.sin(angle), 0],
+          [flip * Math.sin(angle), Math.cos(angle), 0],
+          [0, 0, 1]
+        ]
+
         case arguments.length
         when 1
-          matrix *= Matrix[[Math.cos(angle), Math.sin(angle), 0], [-Math.sin(angle), Math.cos(angle), 0], [0, 0, 1]]
+          matrix *= rotation_matrix
         when 3
-          matrix *= Matrix[[1, 0, x_pixels(x.to_f)], [0, 1, -y_pixels(y.to_f)], [0, 0, 1]]
-          matrix *= Matrix[[Math.cos(angle), Math.sin(angle), 0], [-Math.sin(angle), Math.cos(angle), 0], [0, 0, 1]]
-          matrix *= Matrix[[1, 0, -x_pixels(x.to_f)], [0, 1, y_pixels(y.to_f)], [0, 0, 1]]
+          matrix *= Matrix[[1, 0, x_pixels(x.to_f)], [0, 1, flip * y_pixels(y.to_f)], [0, 0, 1]]
+          matrix *= rotation_matrix
+          matrix *= Matrix[[1, 0, -x_pixels(x.to_f)], [0, 1, -flip * y_pixels(y.to_f)], [0, 0, 1]]
         else
           warnings << "transform 'rotate' must have either one or three arguments"
         end
@@ -47,7 +55,7 @@ module Prawn::SVG::TransformParser
       when 'matrix'
         if arguments.length == 6
           a, b, c, d, e, f = arguments.collect(&:to_f)
-          matrix *= Matrix[[a, -c, e], [-b, d, -f], [0, 0, 1]]
+          matrix *= Matrix[[a, flip * c, e], [flip * b, d, flip * f], [0, 0, 1]]
         else
           warnings << "transform 'matrix' must have six arguments"
         end
@@ -57,7 +65,7 @@ module Prawn::SVG::TransformParser
       end
     end
 
-    matrix_for_prawn(matrix)
+    matrix
   end
 
   def matrix_for_prawn(matrix)
