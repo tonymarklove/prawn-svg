@@ -82,9 +82,9 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       center = [bounding_x1 + (width * cxp), y(bounding_y1) + (height * cyp)]
       focus  = [bounding_x1 + (width * fxp), y(bounding_y1) + (height * fyp)]
 
-      @gradient_matrix = calculate_gradient_matrix(center[0], center[1], width, height)
+      @gradient_matrix = calculate_gradient_matrix(focus[0], focus[1], width, height)
 
-      { from: focus, r1: 0, to: center, r2: radius }
+      { from: focus, r1: 0, to: center, r2: radius * [width, height].max }
 
     when [:radial, :user_space]
       { from: apply_transform(fx, fy), r1: 0, to: apply_transform(cx, cy), r2: radius }
@@ -94,13 +94,27 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     end
   end
 
-  def calculate_gradient_matrix(center_x, center_y, box_width, box_height)
+  def calculate_gradient_matrix(x, y, width, height)
+    # Scaling factors in x and y
+    sx = 1.0
+    sy = 1.0
+
+    if width > height
+      sy = height / width
+    else
+      sx = width / height
+    end
+
+    puts [sx, sy].inspect
+
     # Move the center to the origin
-    t1 = Matrix[[1.0, 0.0, -center_x], [0.0, 1.0, center_y], [0.0, 0.0, 1.0]]
+    t1 = Matrix[[1.0, 0.0, -x], [0.0, 1.0, y], [0.0, 0.0, 1.0]]
     # Scale by box size
-    s = Matrix[[box_width, 0.0, 0.0], [0.0, box_height, 0.0], [0.0, 0.0, 1.0]]
+    s = Matrix[[sx, 0.0, 0.0], [0.0, sy, 0.0], [0.0, 0.0, 1.0]]
     # Move the center back to where it was
-    t2 = Matrix[[1.0, 0.0, center_x], [0.0, 1.0, -center_y], [0.0, 0.0, 1.0]]
+    t2 = Matrix[[1.0, 0.0, x], [0.0, 1.0, -y], [0.0, 0.0, 1.0]]
+
+    # m = Matrix[[sx, 0.0, sx - (sx * x)], [0.0, sy, sy - (sy * y)], [0.0, 0.0, 1.0]]
 
     t2 * s * t1
   end
