@@ -104,6 +104,8 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     # t2 = Matrix[[1.0, 0.0, x], [0.0, 1.0, -y], [0.0, 0.0, 1.0]]
     # m1 = t2 * s * t1
 
+    # This is equivalent to "translate(<x>, <y>) scale(sx sy) translate(-<x>, -<y>)",
+    # we have simply precomputed it for efficiency.
     m2 = Matrix[[sx, 0.0, (-sx * x) + x], [0.0, sy, (sy * y) - y], [0.0, 0.0, 1.0]]
 
     # puts m1.inspect
