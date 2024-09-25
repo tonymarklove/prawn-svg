@@ -61,7 +61,7 @@ describe Prawn::SVG::Elements::Gradient do
         from:                  [150, 80],
         to:                    [100, 80],
         r1:                    0,
-        r2:                    Math.sqrt(((0.8 * 100)**2) + ((0.8 * 100)**2)),
+        r2:                    80,
         stops:                 [[0, 'ff0000'], [0.25, 'ff0000'], [0.5, 'ffffff'], [0.75, '0000ff'], [1, '0000ff']],
         apply_transformations: true
       )
@@ -127,7 +127,7 @@ describe Prawn::SVG::Elements::Gradient do
 
       expect(arguments).to eq(
         from:                  [150.0, 100.0],
-        to:                    [350.0, 300.0],
+        to:                    [350.0, -100.0],
         stops:                 [[0, 'ff0000'], [1, '0000ff']],
         apply_transformations: true
       )
