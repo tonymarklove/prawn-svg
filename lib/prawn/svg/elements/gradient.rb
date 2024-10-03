@@ -1,4 +1,7 @@
 class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
+  GradientStop = Struct.new(:offset, :color, :opacity)
+  ForRender = Struct.new(:unique_id, :type, :from, :to, :r1, :r2, :stops)
+
   attr_reader :parent_gradient
   attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :gradient_matrix
 
@@ -30,7 +33,15 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     arguments[:from][1] = y(arguments[:from][1])
     arguments[:to][1] = y(arguments[:to][1])
 
-    arguments.merge({ stops: stops, apply_transformations: true })
+    ForRender.new(
+      unique_id,
+      arguments.key?(:r1) ? :radial : :axial,
+      arguments[:from],
+      arguments[:to],
+      arguments[:r1],
+      arguments[:r2],
+      stops
+    )
   end
 
   def derive_attribute(name)
@@ -40,6 +51,10 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   private
 
   attr_reader :transform_matrix
+
+  def unique_id
+    @unique_id ||= Digest::SHA1.hexdigest(attributes['id'])[0...8]
+  end
 
   def apply_transform(x, y)
     return [x, y] unless transform_matrix
@@ -178,14 +193,14 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       element.name == 'stop' && element.attributes['offset']
     end
 
-    @stops = stop_elements.each.with_object([]) do |child, result|
+    @stops = stop_elements.each_with_object([]) do |child, result|
       offset = percentage_or_proportion(child.attributes['offset'])
 
       # Offsets must be strictly increasing (SVG 13.2.4)
-      offset = result.last.first if result.last && result.last.first > offset
+      offset = result.last.offset if result.last && result.last.offset > offset
 
       if (color = Prawn::SVG::Color.css_color_to_prawn_color(child.properties.stop_color))
-        result << [offset, color]
+        result << GradientStop.new(offset, color, 1.0)
       end
     end
 
@@ -196,8 +211,17 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
       @stops = parent_gradient.stops
     else
-      stops.unshift([0, stops.first.last]) if stops.first.first.positive?
-      stops.push([1, stops.last.last])     if stops.last.first < 1
+      if stops.first.offset.positive?
+        start_stop = stops.first.dup
+        start_stop.offset = 0
+        stops.unshift(start_stop)
+      end
+
+      if stops.last.offset < 1
+        end_stop = stops.last.dup
+        end_stop.offset = 1
+        stops.push(end_stop)
+      end
     end
   end
 
