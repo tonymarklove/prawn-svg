@@ -195,11 +195,6 @@ class Prawn::SVG::Elements::Base
           gradient_for_render = result.gradient_arguments(self)
           if gradient_for_render
             add_call 'svg:render_gradient', type, gradient_for_render
-            # gradient_matrix = result.gradient_matrix
-
-            # add_call 'transformation_matrix', *matrix_for_prawn(gradient_matrix) if gradient_matrix
-            # add_call "#{type}_gradient", **arguments
-            # add_call 'transformation_matrix', *matrix_for_prawn(gradient_matrix.inverse) if gradient_matrix
             true
           end
         end

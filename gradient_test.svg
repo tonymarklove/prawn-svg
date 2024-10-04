@@ -75,9 +75,9 @@
     <rect fill="url(#transparent-linear-8)" x="240" y="30" width="20" height="20"/>
   </g>
 
-  <rect fill="url(#radial-base)" x="0" y="60" width="20" height="20" />
+<!--   <rect fill="url(#radial-base)" x="0" y="60" width="20" height="20" />
   <rect fill="url(#radial-base)" x="30" y="60" width="10" height="20" />
   <rect fill="url(#radial-base)" x="60" y="60" width="20" height="10" />
   <rect fill="url(#radial-1)" x="90" y="60" width="20" height="20" />
-  <rect fill="url(#radial-2)" x="120" y="60" width="20" height="20" transform="rotate(45)" />
+  <rect fill="url(#radial-2)" x="120" y="60" width="20" height="20" transform="rotate(45)" /> -->
 </svg>

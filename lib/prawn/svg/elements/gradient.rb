@@ -1,6 +1,6 @@
 class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   GradientStop = Struct.new(:offset, :color, :opacity)
-  ForRender = Struct.new(:unique_id, :type, :from, :to, :r1, :r2, :stops)
+  ForRender = Struct.new(:unique_id, :type, :from, :to, :r1, :r2, :stops, :matrix)
 
   attr_reader :parent_gradient
   attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :gradient_matrix
@@ -15,6 +15,8 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     raise SkipElementQuietly if attributes['id'].nil?
 
     @parent_gradient = document.gradients[href_attribute[1..]] if href_attribute && href_attribute[0] == '#'
+    @transform_matrix = Matrix.identity(3)
+
     assert_compatible_prawn_version
     load_gradient_configuration
     load_coordinates
@@ -30,8 +32,8 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     return unless arguments
 
     # Convert the y-coords into PDF page-space
-    arguments[:from][1] = y(arguments[:from][1])
-    arguments[:to][1] = y(arguments[:to][1])
+    # arguments[:from][1] = y(arguments[:from][1])
+    # arguments[:to][1] = y(arguments[:to][1])
 
     ForRender.new(
       unique_id,
@@ -40,7 +42,8 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       arguments[:to],
       arguments[:r1],
       arguments[:r2],
-      stops
+      stops,
+      gradient_matrix || Matrix.identity(3)
     )
   end
 
@@ -73,15 +76,14 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
     case [type, units]
     when [:linear, :bounding_box]
-      xp1, yp1 = apply_transform(x1, y1)
-      xp2, yp2 = apply_transform(x2, y2)
-      from = [bounding_x1 + (width * xp1), y(bounding_y1) + (height * yp1)]
-      to   = [bounding_x1 + (width * xp2), y(bounding_y1) + (height * yp2)]
+      @gradient_matrix = Matrix[[width, 0.0, bounding_x1], [0.0, height, bounding_y1], [0.0, 0.0, 1.0]] * transform_matrix
 
-      { from: from, to: to }
+      { from: [x1, y1], to: [x2, y2] }
 
     when [:linear, :user_space]
-      { from: apply_transform(x1, y1), to: apply_transform(x2, y2) }
+      @gradient_matrix = Matrix[[1.0, 0.0, 0.0], [0.0, -1.0, document.sizing.output_height], [0.0, 0.0, 1.0]] * transform_matrix
+
+      { from: [x1, y1], to: [x2, y2] }
 
     when [:radial, :bounding_box]
       cxp, cyp = apply_transform(cx, cy)
@@ -154,10 +156,10 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   def load_coordinates
     case [type, units]
     when [:linear, :bounding_box]
-      @x1 = percentage_or_proportion(derive_attribute('x1'), 0)
-      @y1 = percentage_or_proportion(derive_attribute('y1'), 0)
-      @x2 = percentage_or_proportion(derive_attribute('x2'), 1)
-      @y2 = percentage_or_proportion(derive_attribute('y2'), 0)
+      @x1 = percentage_or_proportion(derive_attribute('x1'), 0.0)
+      @y1 = percentage_or_proportion(derive_attribute('y1'), 0.0)
+      @x2 = percentage_or_proportion(derive_attribute('x2'), 1.0)
+      @y2 = percentage_or_proportion(derive_attribute('y2'), 0.0)
 
     when [:linear, :user_space]
       @x1 = x(derive_attribute('x1'))
