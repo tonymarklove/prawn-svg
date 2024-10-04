@@ -10,10 +10,14 @@ class Prawn::SVG::GradientRenderer
 
     # Add pattern to the PDF page resources dictionary
     prawn.page.resources[:Pattern] ||= {}
-    prawn.page.resources[:Pattern]["SP#{key}"] = create_gradient_pattern
+    prawn.page.resources[:Pattern]["Prawn-SVG-Pattern-#{key}"] = create_gradient_pattern
 
+    # Add the transparency ExtGState to the page
+    prawn.page.ext_gstates["Prawn-SVG-ExtGState-#{key}"] = create_transparency_graphics_state
+
+    prawn.renderer.add_content("/Prawn-SVG-ExtGState-#{key} gs")
     prawn.send(:set_color_space, type, :Pattern)
-    prawn.renderer.add_content("/SP#{key} #{draw_operator}")
+    prawn.renderer.add_content("/Prawn-SVG-Pattern-#{key} #{draw_operator}")
   end
 
   private
@@ -29,6 +33,86 @@ class Prawn::SVG::GradientRenderer
     else
       raise ArgumentError, "unknown type '#{type}'"
     end
+  end
+
+  def create_transparency_graphics_state
+    prawn.renderer.min_version(1.4)
+
+    shading = prawn.ref!(
+      ShadingType: 2,
+      ColorSpace:  :DeviceGray,
+      Coords:      [0, 0, 20, 0], # FIXME
+      Function:    {
+        FunctionType: 2,
+        Domain:       [0.0, 1.0],
+        C0:           [0],
+        C1:           [1],
+        N:            1
+      },
+      Extend:      [true, true]
+    )
+
+    pattern = prawn.ref!(
+      PatternType: 2, # shading pattern
+      Shading:     shading
+      # Matrix:      transformation
+    )
+
+    transparency_group = prawn.ref!(
+      Type:      :XObject,
+      Subtype:   :Form,
+      FormType:  1,
+      BBox:      [0, 0, 1200, 800], # FIXME
+      Group:     {
+        Type: :Group,
+        S:    :Transparency,
+        I:    true,
+        CS:   :DeviceGray
+      },
+      Resources: {
+        Pattern: {
+          'TGP01' => pattern
+        },
+        Shading: {
+          'TGS01' => shading
+        }
+      }
+    )
+
+    transparency_group.stream << begin
+      # box = PDF::Core.real_params([0, 760, 1200, 800])
+
+      <<~CMDS.strip
+        /TGS01 sh
+      CMDS
+
+      # <<~CMDS.strip
+      #   /DeviceGrey cs
+      #   0.53333 scn
+      #   0.0 780.0 20.0 20.0 re
+      #   f
+      # CMDS
+
+      # <<~CMDS.strip
+      #   /Pattern cs
+      #   /TGP01 scn
+      #   0.0 780.0 20.0 20.0 re
+      #   f
+      # CMDS
+    end
+
+    mask = prawn.ref!(
+      Type: :Mask,
+      S:    :Luminosity,
+      G:    transparency_group,
+      BC:   [1.0]
+    )
+
+    prawn.ref!(
+      Type:  :ExtGState,
+      SMask: mask,
+      AIS:   false
+    )
   end
 
   def create_gradient_pattern
