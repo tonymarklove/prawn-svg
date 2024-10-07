@@ -46,11 +46,11 @@ module Prawn::SVG::TransformParser
 
       when 'skewX'
         angle = arguments[0].to_f * Math::PI / 180.0
-        matrix *= Matrix[[1, -Math.tan(angle), 0], [0, 1, 0], [0, 0, 1]]
+        matrix *= Matrix[[1, flip * Math.tan(angle), 0], [0, 1, 0], [0, 0, 1]]
 
       when 'skewY'
         angle = arguments[0].to_f * Math::PI / 180.0
-        matrix *= Matrix[[1, 0, 0], [-Math.tan(angle), 1, 0], [0, 0, 1]]
+        matrix *= Matrix[[1, 0, 0], [flip * Math.tan(angle), 1, 0], [0, 0, 1]]
 
       when 'matrix'
         if arguments.length == 6

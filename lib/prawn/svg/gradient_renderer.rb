@@ -45,24 +45,25 @@ class Prawn::SVG::GradientRenderer
 
     shading_func = create_shading_function(offsets, opacity_stops)
 
-    p0 = gradient_element.matrix * Vector[0, 0, 1]
-    p1 = gradient_element.matrix * Vector[1, 0, 1]
+    # p0 = gradient_element.matrix * Vector[*gradient_element.from, 1]
+    # p1 = gradient_element.matrix * Vector[*gradient_element.to, 1]
 
     shading = prawn.ref!(
       ShadingType: 2,
       ColorSpace:  :DeviceGray,
-      Coords:      [p0[0], p0[1], p1[0], p1[1]], # FIXME
+      Coords:      [*gradient_element.from, *gradient_element.to], # FIXME
+      # Coords:      [p0[0], p0[1], p1[0], p1[1]], # FIXME
       Function:    shading_func,
       Extend:      [true, true]
     )
 
-    transform = gradient_element.matrix
+    # transform = gradient_transform
+    transform = gradient_element.matrix.to_a[0..1].transpose.flatten
 
-    # FIXME remove?
     pattern = prawn.ref!(
       PatternType: 2, # shading pattern
       Shading:     shading,
-      # Matrix:      transform.to_a[0..1].transpose.flatten
+      Matrix:      transform
     )
 
     transparency_group = prawn.ref!(
@@ -87,25 +88,25 @@ class Prawn::SVG::GradientRenderer
     )
 
     transparency_group.stream << begin
-      # box = PDF::Core.real_params([0, 760, 1200, 800])
+      box = PDF::Core.real_params(prawn.state.page.dimensions)
+
+      # <<~CMDS.strip
+      #   /TGS01 sh
+      # CMDS
+
+      # <<~CMDS.strip
+      #   /DeviceGray cs
+      #   0.5 scn
+      #   0.0 750.0 20.0 20.0 re
+      #   f
+      # CMDS
 
       <<~CMDS.strip
-        /TGS01 sh
+        /Pattern cs
+        /TGP01 scn
+        #{box} re
+        f
       CMDS
-
-      # <<~CMDS.strip
-      #   /DeviceGrey cs
-      #   0.53333 scn
-      #   0.0 780.0 20.0 20.0 re
-      #   f
-      # CMDS
-
-      # <<~CMDS.strip
-      #   /Pattern cs
-      #   /TGP01 scn
-      #   0.0 780.0 20.0 20.0 re
-      #   f
-      # CMDS
     end
 
     prawn.ref!(
@@ -135,7 +136,7 @@ class Prawn::SVG::GradientRenderer
     coords =
       if gradient_element.type == :axial
         # [0, 0, x2 - x1, y2 - y1]
-        [gradient_element.from, gradient_element.to].flatten
+        [*gradient_element.from, *gradient_element.to]
       else
         [0, 0, gradient_element.r1, x2 - x1, y2 - y1, gradient_element.r2]
       end

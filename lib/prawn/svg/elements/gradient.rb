@@ -31,10 +31,6 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     arguments = specific_gradient_arguments(element)
     return unless arguments
 
-    # Convert the y-coords into PDF page-space
-    # arguments[:from][1] = y(arguments[:from][1])
-    # arguments[:to][1] = y(arguments[:to][1])
-
     ForRender.new(
       unique_id,
       arguments.key?(:r1) ? :radial : :axial,
@@ -74,14 +70,22 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       height = bounding_y1 - bounding_y2
     end
 
+    svg_to_pdf_matrix = Matrix[[1.0, 0.0, 0.0], [0.0, -1.0, document.sizing.output_height], [0.0, 0.0, 1.0]]
+
     case [type, units]
     when [:linear, :bounding_box]
-      @gradient_matrix = Matrix[[width, 0.0, bounding_x1], [0.0, height, bounding_y1], [0.0, 0.0, 1.0]] * transform_matrix
+      bounding_box_to_user_space_matrix = Matrix[
+        [width, 0.0, bounding_x1],
+        [0.0, height, document.sizing.output_height - bounding_y1],
+        [0.0, 0.0, 1.0]
+      ]
+
+      @gradient_matrix = svg_to_pdf_matrix * bounding_box_to_user_space_matrix * transform_matrix
 
       { from: [x1, y1], to: [x2, y2] }
 
     when [:linear, :user_space]
-      @gradient_matrix = Matrix[[1.0, 0.0, 0.0], [0.0, -1.0, document.sizing.output_height], [0.0, 0.0, 1.0]] * transform_matrix
+      @gradient_matrix = svg_to_pdf_matrix * transform_matrix
 
       { from: [x1, y1], to: [x2, y2] }
 
