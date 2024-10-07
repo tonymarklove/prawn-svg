@@ -45,20 +45,24 @@ class Prawn::SVG::GradientRenderer
 
     shading_func = create_shading_function(offsets, opacity_stops)
 
+    p0 = gradient_element.matrix * Vector[0, 0, 1]
+    p1 = gradient_element.matrix * Vector[1, 0, 1]
+
     shading = prawn.ref!(
       ShadingType: 2,
       ColorSpace:  :DeviceGray,
-      Coords:      [0, 0, 20, 0], # FIXME
+      Coords:      [p0[0], p0[1], p1[0], p1[1]], # FIXME
       Function:    shading_func,
       Extend:      [true, true]
     )
+
+    transform = gradient_element.matrix
 
     # FIXME remove?
     pattern = prawn.ref!(
       PatternType: 2, # shading pattern
       Shading:     shading,
-      # Matrix:      gradient_element.matrix.to_a[0..1].transpose.flatten
-      Matrix:      gradient_transform
+      # Matrix:      transform.to_a[0..1].transpose.flatten
     )
 
     transparency_group = prawn.ref!(
