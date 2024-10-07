@@ -56,7 +56,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   attr_reader :transform_matrix
 
   def unique_id
-    @unique_id ||= Digest::SHA1.hexdigest(attributes['id'])[0...8]
+    @unique_id ||= SecureRandom.hex(4)
   end
 
   def apply_transform(x, y)
@@ -202,7 +202,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       offset = result.last.offset if result.last && result.last.offset > offset
 
       if (color = Prawn::SVG::Color.css_color_to_prawn_color(child.properties.stop_color))
-        result << GradientStop.new(offset, color, 1.0)
+        result << GradientStop.new(offset, color, parse_opacity(child.properties.stop_opacity))
       end
     end
 
@@ -244,5 +244,12 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     else
       value
     end
+  end
+
+  def parse_opacity(string)
+    value = Float(string, exception: false)
+    return 1.0 unless value
+
+    value.clamp(0.0, 1.0)
   end
 end

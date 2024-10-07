@@ -6,7 +6,7 @@ require_relative 'lib/prawn-svg'
 page_width = 1200
 page_height = 800
 
-input_file = 'gradient_test simple.svg'
+input_file = 'gradient_test.svg'
 
 prawn_document = Prawn::Document.new(margin: 0, page_size: [page_width, page_height])
 

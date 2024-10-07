@@ -8,16 +8,18 @@ class Prawn::SVG::GradientRenderer
   def draw
     key = gradient_element.unique_id
 
-    # Add pattern to the PDF page resources dictionary
+    # If we need transparency, add an ExtGState to the page and enable it.
+    if gradient_element.stops.any? { |s| s.opacity < 1 }
+      prawn.page.ext_gstates["PSVG-ExtGState-#{key}"] = create_transparency_graphics_state
+      prawn.renderer.add_content("/PSVG-ExtGState-#{key} gs")
+    end
+
+    # Add pattern to the PDF page resources dictionary.
     prawn.page.resources[:Pattern] ||= {}
-    prawn.page.resources[:Pattern]["Prawn-SVG-Pattern-#{key}"] = create_gradient_pattern
+    prawn.page.resources[:Pattern]["PSVG-Pattern-#{key}"] = create_gradient_pattern
 
-    # Add the transparency ExtGState to the page
-    prawn.page.ext_gstates["Prawn-SVG-ExtGState-#{key}"] = create_transparency_graphics_state
-
-    prawn.renderer.add_content("/Prawn-SVG-ExtGState-#{key} gs")
     prawn.send(:set_color_space, type, :Pattern)
-    prawn.renderer.add_content("/Prawn-SVG-Pattern-#{key} #{draw_operator}")
+    prawn.renderer.add_content("/PSVG-Pattern-#{key} #{draw_operator}")
   end
 
   private
@@ -38,24 +40,24 @@ class Prawn::SVG::GradientRenderer
   def create_transparency_graphics_state
     prawn.renderer.min_version(1.4)
 
+    offsets = gradient_element.stops.map(&:offset)
+    opacity_stops = gradient_element.stops.map { |stop| [stop.opacity] }
+
+    shading_func = create_shading_function(offsets, opacity_stops)
+
     shading = prawn.ref!(
       ShadingType: 2,
       ColorSpace:  :DeviceGray,
       Coords:      [0, 0, 20, 0], # FIXME
-      Function:    {
-        FunctionType: 2,
-        Domain:       [0.0, 1.0],
-        C0:           [0],
-        C1:           [1],
-        N:            1
-      },
+      Function:    shading_func,
       Extend:      [true, true]
     )
 
+    # FIXME remove?
     pattern = prawn.ref!(
       PatternType: 2, # shading pattern
-      Shading:     shading
-      # Matrix:      transformation
+      Shading:     shading,
+      # Matrix:      gradient_element.matrix.to_a[0..1].transpose.flatten
     )
 
     transparency_group = prawn.ref!(
@@ -70,7 +72,7 @@ class Prawn::SVG::GradientRenderer
         CS:   :DeviceGray
       },
       Resources: {
-        Pattern: {
+        Pattern: { # FIXME remove?
           'TGP01' => pattern
         },
         Shading: {
@@ -116,36 +118,15 @@ class Prawn::SVG::GradientRenderer
   end
 
   def create_gradient_pattern
-    shader_funcs =
-      gradient_element.stops.each_cons(2).map do |first, second|
-        prawn.ref!(
-          FunctionType: 2,
-          Domain:       [0.0, 1.0],
-          C0:           prawn.send(:normalize_color, first.color),
-          C1:           prawn.send(:normalize_color, second.color),
-          N:            1.0
-        )
-      end
+    offsets = gradient_element.stops.map(&:offset)
+    color_stops = gradient_element.stops.map { |stop| prawn.send(:normalize_color, stop.color) }
 
-    # If there's only two stops, we can use the single shader.
-    # Otherwise we stitch the multiple shaders together.
-    shader =
-      if shader_funcs.length == 1
-        shader_funcs.first
-      else
-        prawn.ref!(
-          FunctionType: 3, # stitching function
-          Domain:       [0.0, 1.0],
-          Functions:    shader_funcs,
-          Bounds:       gradient_element.stops[1..-2].map(&:offset),
-          Encode:       [0.0, 1.0] * shader_funcs.length
-        )
-      end
+    shading_func = create_shading_function(offsets, color_stops)
 
     transformation = gradient_transform
 
-    puts [gradient_element.from, gradient_element.to].inspect
-    puts transformation.inspect
+    # puts [gradient_element.from, gradient_element.to].inspect
+    # puts transformation.inspect
 
     # transformation = [92.30769230769229, 0.0, 0.0, 92.30769230769229, 18.46153846153846, -2892.315384615384]
 
@@ -161,7 +142,7 @@ class Prawn::SVG::GradientRenderer
       ShadingType: gradient_element.type == :axial ? 2 : 3,
       ColorSpace:  prawn.send(:color_space, gradient_element.stops.first.color),
       Coords:      coords,
-      Function:    shader,
+      Function:    shading_func,
       Extend:      [true, true]
     )
 
@@ -169,6 +150,24 @@ class Prawn::SVG::GradientRenderer
       PatternType: 2, # shading pattern
       Shading:     shading,
       Matrix:      transformation
+    )
+  end
+
+  def create_shading_function(offsets, color_stops)
+    linear_funcs = color_stops.each_cons(2).map do |c0, c1|
+      prawn.ref!(FunctionType: 2, Domain: [0.0, 1.0], C0: c0, C1: c1, N: 1.0)
+    end
+
+    # If there's only two stops, we can use the single shader.
+    return linear_funcs.first if linear_funcs.length == 1
+
+    # Otherwise we stitch the multiple shaders together.
+    prawn.ref!(
+      FunctionType: 3, # stitching function
+      Domain:       [0.0, 1.0],
+      Functions:    linear_funcs,
+      Bounds:       offsets[1..-2],
+      Encode:       [0.0, 1.0] * linear_funcs.length
     )
   end
 
