@@ -63,15 +63,15 @@
   <rect fill="url(#linear-7)" x="210" y="0" width="20" height="20"/>
   <rect fill="url(#linear-8)" x="240" y="0" width="20" height="20"/>
 
-    <rect fill="url(#transparent-linear-base)" y="30" width="20" height="20" />
+    <!-- <rect fill="url(#transparent-linear-base)" y="30" width="20" height="20" /> -->
     <rect fill="url(#transparent-linear-1)" x="30" y="30" width="20" height="20" />
-    <rect fill="url(#transparent-linear-2)" x="60" y="30" width="20" height="20"/>
+<!--     <rect fill="url(#transparent-linear-2)" x="60" y="30" width="20" height="20"/>
     <rect fill="url(#transparent-linear-3)" x="90" y="30" width="20" height="20"/>
     <rect fill="url(#transparent-linear-4)" x="120" y="30" width="20" height="20"/>
     <rect fill="url(#transparent-linear-5)" x="150" y="30" width="20" height="20"/>
     <rect fill="url(#transparent-linear-6)" x="180" y="30" width="20" height="20"/>
     <rect fill="url(#transparent-linear-7)" x="210" y="30" width="20" height="20"/>
-    <rect fill="url(#transparent-linear-8)" x="240" y="30" width="20" height="20"/>
+    <rect fill="url(#transparent-linear-8)" x="240" y="30" width="20" height="20"/> -->
 
 
 <!--   <rect fill="url(#radial-base)" x="0" y="60" width="20" height="20" />

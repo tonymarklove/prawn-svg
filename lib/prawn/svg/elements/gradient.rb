@@ -196,7 +196,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     end
 
     @stops = stop_elements.each_with_object([]) do |child, result|
-      offset = percentage_or_proportion(child.attributes['offset'])
+      offset = percentage_or_proportion(child.attributes['offset']).clamp(0.0, 1.0)
 
       # Offsets must be strictly increasing (SVG 13.2.4)
       offset = result.last.offset if result.last && result.last.offset > offset
@@ -212,7 +212,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       end
 
       @stops = parent_gradient.stops
-    else
+    else # FIXME: do they need to start at 0 with our custom renderer?
       if stops.first.offset.positive?
         start_stop = stops.first.dup
         start_stop.offset = 0

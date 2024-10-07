@@ -58,13 +58,14 @@ class Prawn::SVG::GradientRenderer
       PatternType: 2, # shading pattern
       Shading:     shading,
       # Matrix:      gradient_element.matrix.to_a[0..1].transpose.flatten
+      Matrix:      gradient_transform
     )
 
     transparency_group = prawn.ref!(
       Type:      :XObject,
       Subtype:   :Form,
       FormType:  1,
-      BBox:      [0, 0, 1200, 800], # FIXME
+      BBox:      prawn.state.page.dimensions, # FIXME?
       Group:     {
         Type: :Group,
         S:    :Transparency,
@@ -103,16 +104,13 @@ class Prawn::SVG::GradientRenderer
       # CMDS
     end
 
-    mask = prawn.ref!(
-      Type: :Mask,
-      S:    :Luminosity,
-      G:    transparency_group,
-      BC:   [1.0]
-    )
-
     prawn.ref!(
       Type:  :ExtGState,
-      SMask: mask,
+      SMask: {
+        Type: :Mask,
+        S:    :Luminosity,
+        G:    transparency_group
+      },
       AIS:   false
     )
   end
