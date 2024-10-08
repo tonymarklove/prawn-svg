@@ -44,7 +44,8 @@ class Prawn::SVG::GradientRenderer
     offsets = gradient.stops.map(&:offset)
     opacity_stops = gradient.stops.map { |stop| [stop.opacity] }
 
-    transform = gradient.matrix.to_a[0..1].transpose.flatten
+    bounds_x, bounds_y = prawn.bounds.anchor
+    transform = Matrix[[1, 0, bounds_x], [0, 1, bounds_y], [0, 0, 1]] * gradient.matrix
 
     transparency_group = prawn.ref!(
       Type:      :XObject,
@@ -60,7 +61,7 @@ class Prawn::SVG::GradientRenderer
         Pattern: {
           'TGP01' => {
             PatternType: 2,
-            Matrix:      transform,
+            Matrix:      matrix_for_pdf(transform),
             Shading:     {
               ShadingType: gradient.type == :axial ? 2 : 3,
               ColorSpace:  :DeviceGray,
@@ -108,7 +109,7 @@ class Prawn::SVG::GradientRenderer
         Function:    create_shading_function(offsets, color_stops),
         Extend:      [true, true]
       },
-      Matrix:      gradient_transform
+      Matrix:      matrix_for_pdf(gradient_transform)
     )
   end
 
@@ -131,18 +132,22 @@ class Prawn::SVG::GradientRenderer
   end
 
   def gradient_transform
-    x1, y1 = prawn.send(:map_to_absolute, gradient.from)
+    current_transform = pdf_to_ruby_matrix(
+      prawn.current_transformation_matrix_with_translation(*prawn.bounds.anchor)
+    )
 
-    tm = prawn.current_transformation_matrix_with_translation #(x1, y1)
+    current_transform * gradient.matrix
+  end
 
-    mat = Matrix[
-      [tm[0], tm[2], tm[4]],
-      [tm[1], tm[3], tm[5]],
+  def pdf_to_ruby_matrix(pdf_matrix)
+    Matrix[
+      [pdf_matrix[0], pdf_matrix[2], pdf_matrix[4]],
+      [pdf_matrix[1], pdf_matrix[3], pdf_matrix[5]],
       [0.0, 0.0, 1.0]
     ]
+  end
 
-    result = mat * gradient.matrix
-
-    result.to_a[0..1].transpose.flatten
+  def matrix_for_pdf(matrix)
+    matrix.to_a[0..1].transpose.flatten
   end
 end

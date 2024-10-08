@@ -164,7 +164,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       end
 
       @stops = parent_gradient.stops
-    else # FIXME: do they need to start at 0 with our custom renderer?
+    else
       if stops.first.offset.positive?
         start_stop = stops.first.dup
         start_stop.offset = 0
