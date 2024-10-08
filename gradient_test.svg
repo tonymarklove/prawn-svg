@@ -48,7 +48,7 @@
     </radialGradient>
 
     <radialGradient id="radial-1" href="#radial-base" cx="0.2" fx="0.6" gradientTransform="" />
-    <radialGradient id="radial-2" href="#radial-base" gradientUnits="userSpaceOnUse" cx="25" cy="75" r="5" />
+    <radialGradient id="radial-2" href="#radial-base" gradientUnits="userSpaceOnUse" cx="130" cy="70" r="5" />
   </defs>
 
   <rect fill="#0f1941" width="260" height="173.33"/>
@@ -63,6 +63,7 @@
   <rect fill="url(#linear-7)" x="210" y="0" width="20" height="20"/>
   <rect fill="url(#linear-8)" x="240" y="0" width="20" height="20"/>
 
+  <g>
     <rect fill="url(#transparent-linear-base)" y="30" width="20" height="20" />
     <rect fill="url(#transparent-linear-1)" x="30" y="30" width="20" height="20" />
     <rect fill="url(#transparent-linear-2)" x="60" y="30" width="20" height="20"/>
@@ -72,11 +73,11 @@
     <rect fill="url(#transparent-linear-6)" x="180" y="30" width="20" height="20"/>
     <rect fill="url(#transparent-linear-7)" x="210" y="30" width="20" height="20"/>
     <rect fill="url(#transparent-linear-8)" x="240" y="30" width="20" height="20"/>
+  </g>
 
-
-<!--   <rect fill="url(#radial-base)" x="0" y="60" width="20" height="20" />
+  <rect fill="url(#radial-base)" x="0" y="60" width="20" height="20" />
   <rect fill="url(#radial-base)" x="30" y="60" width="10" height="20" />
   <rect fill="url(#radial-base)" x="60" y="60" width="20" height="10" />
   <rect fill="url(#radial-1)" x="90" y="60" width="20" height="20" />
-  <rect fill="url(#radial-2)" x="120" y="60" width="20" height="20" transform="rotate(45)" /> -->
+  <rect fill="url(#radial-2)" x="120" y="60" width="20" height="20" transform="rotate(45)" />
 </svg>

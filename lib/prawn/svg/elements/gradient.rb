@@ -1,9 +1,9 @@
 class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   GradientStop = Struct.new(:offset, :color, :opacity)
-  ForRender = Struct.new(:unique_id, :type, :from, :to, :r1, :r2, :stops, :matrix)
+  ForRender = Struct.new(:key, :type, :from, :to, :r1, :r2, :stops, :matrix, keyword_init: true)
 
   attr_reader :parent_gradient
-  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :gradient_matrix
+  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops
 
   TAG_NAME_TO_TYPE = {
     'linearGradient' => :linear,
@@ -27,20 +27,28 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     raise SkipElementQuietly # we don't want anything pushed onto the call stack
   end
 
-  def gradient_arguments(element)
-    arguments = specific_gradient_arguments(element)
-    return unless arguments
-
-    ForRender.new(
-      unique_id,
-      arguments.key?(:r1) ? :radial : :axial,
-      arguments[:from],
-      arguments[:to],
-      arguments[:r1],
-      arguments[:r2],
-      stops,
-      gradient_matrix || Matrix.identity(3)
-    )
+  def gradient_for_element(element)
+    if type == :radial
+      ForRender.new(
+        key:    SecureRandom.hex(4),
+        type:   :radial,
+        from:   [fx, fy],
+        r1:     0,
+        to:     [cx, cy],
+        r2:     radius,
+        stops:  stops,
+        matrix: matrix_for_element(element)
+      )
+    else
+      ForRender.new(
+        key:    SecureRandom.hex(4),
+        type:   :axial,
+        from:   [x1, y1],
+        to:     [x2, y2],
+        stops:  stops,
+        matrix: matrix_for_element(element)
+      )
+    end
   end
 
   def derive_attribute(name)
@@ -51,88 +59,28 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
   attr_reader :transform_matrix
 
-  def unique_id
-    @unique_id ||= SecureRandom.hex(4)
-  end
-
-  def apply_transform(x, y)
-    return [x, y] unless transform_matrix
-
-    (transform_matrix * Vector[x, y, 1]).to_a
-  end
-
-  def specific_gradient_arguments(element)
+  def matrix_for_element(element)
     if units == :bounding_box
       bounding_x1, bounding_y1, bounding_x2, bounding_y2 = element.bounding_box
       return if bounding_y2.nil?
 
       width = bounding_x2 - bounding_x1
       height = bounding_y1 - bounding_y2
-    end
 
-    svg_to_pdf_matrix = Matrix[[1.0, 0.0, 0.0], [0.0, -1.0, document.sizing.output_height], [0.0, 0.0, 1.0]]
-
-    case [type, units]
-    when [:linear, :bounding_box]
       bounding_box_to_user_space_matrix = Matrix[
         [width, 0.0, bounding_x1],
         [0.0, height, document.sizing.output_height - bounding_y1],
         [0.0, 0.0, 1.0]
       ]
 
-      @gradient_matrix = svg_to_pdf_matrix * bounding_box_to_user_space_matrix * transform_matrix
-
-      { from: [x1, y1], to: [x2, y2] }
-
-    when [:linear, :user_space]
-      @gradient_matrix = svg_to_pdf_matrix * transform_matrix
-
-      { from: [x1, y1], to: [x2, y2] }
-
-    when [:radial, :bounding_box]
-      cxp, cyp = apply_transform(cx, cy)
-      fxp, fyp = apply_transform(fx, fy)
-      center = [bounding_x1 + (width * cxp), y(bounding_y1) + (height * cyp)]
-      focus  = [bounding_x1 + (width * fxp), y(bounding_y1) + (height * fyp)]
-
-      @gradient_matrix = calculate_gradient_matrix(focus[0], focus[1], width, height)
-
-      { from: focus, r1: 0, to: center, r2: radius * [width, height].max }
-
-    when [:radial, :user_space]
-      { from: apply_transform(fx, fy), r1: 0, to: apply_transform(cx, cy), r2: radius }
-
+      svg_to_pdf_matrix * bounding_box_to_user_space_matrix * transform_matrix
     else
-      raise 'unexpected type/unit system'
+      svg_to_pdf_matrix * transform_matrix
     end
   end
 
-  def calculate_gradient_matrix(x, y, width, height)
-    # Scaling factors in x and y
-    if width > height
-      sx = 1.0
-      sy = height / width
-    else
-      sx = width / height
-      sy = 1.0
-    end
-
-    # # Move the center to the origin
-    # t1 = Matrix[[1.0, 0.0, -x], [0.0, 1.0, y], [0.0, 0.0, 1.0]]
-    # # Scale by box size
-    # s = Matrix[[sx, 0.0, 0.0], [0.0, sy, 0.0], [0.0, 0.0, 1.0]]
-    # # Move the center back to where it was
-    # t2 = Matrix[[1.0, 0.0, x], [0.0, 1.0, -y], [0.0, 0.0, 1.0]]
-    # m1 = t2 * s * t1
-
-    # This is equivalent to "translate(<x>, <y>) scale(sx sy) translate(-<x>, -<y>)",
-    # we have simply precomputed it for efficiency.
-    m2 = Matrix[[sx, 0.0, (-sx * x) + x], [0.0, sy, (sy * y) - y], [0.0, 0.0, 1.0]]
-
-    # puts m1.inspect
-    # puts m2.inspect
-
-    m2
+  def svg_to_pdf_matrix
+    @svg_to_pdf_matrix ||= Matrix[[1.0, 0.0, 0.0], [0.0, -1.0, document.sizing.output_height], [0.0, 0.0, 1.0]]
   end
 
   def type

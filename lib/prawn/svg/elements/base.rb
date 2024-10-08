@@ -192,7 +192,7 @@ class Prawn::SVG::Elements::Base
           add_call "#{type}_color", result.value
           true
         when Prawn::SVG::Elements::Gradient
-          gradient_for_render = result.gradient_arguments(self)
+          gradient_for_render = result.gradient_for_element(self)
           if gradient_for_render
             add_call 'svg:render_gradient', type, gradient_for_render
             true

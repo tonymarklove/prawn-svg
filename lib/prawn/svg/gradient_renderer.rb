@@ -1,15 +1,15 @@
 class Prawn::SVG::GradientRenderer
-  def initialize(prawn, type, gradient_element)
+  def initialize(prawn, type, gradient)
     @prawn = prawn
     @type = type.to_sym
-    @gradient_element = gradient_element
+    @gradient = gradient
   end
 
   def draw
-    key = gradient_element.unique_id
+    key = gradient.key
 
     # If we need transparency, add an ExtGState to the page and enable it.
-    if gradient_element.stops.any? { |s| s.opacity < 1 }
+    if gradient.stops.any? { |s| s.opacity < 1 }
       prawn.page.ext_gstates["PSVG-ExtGState-#{key}"] = create_transparency_graphics_state
       prawn.renderer.add_content("/PSVG-ExtGState-#{key} gs")
     end
@@ -24,52 +24,31 @@ class Prawn::SVG::GradientRenderer
 
   private
 
-  attr_reader :prawn, :type, :gradient_element
+  attr_reader :prawn, :type, :gradient
 
   def draw_operator
-    case type
-    when :fill
-      'scn'
-    when :stroke
-      'SCN'
+    type == :fill ? 'scn' : 'SCN'
+  end
+
+  def gradient_coordinates
+    if gradient.type == :axial
+      [*gradient.from, *gradient.to]
     else
-      raise ArgumentError, "unknown type '#{type}'"
+      [*gradient.from, gradient.r1, *gradient.to, gradient.r2]
     end
   end
 
   def create_transparency_graphics_state
     prawn.renderer.min_version(1.4)
 
-    offsets = gradient_element.stops.map(&:offset)
-    opacity_stops = gradient_element.stops.map { |stop| [stop.opacity] }
+    offsets = gradient.stops.map(&:offset)
+    opacity_stops = gradient.stops.map { |stop| [stop.opacity] }
 
-    shading_func = create_shading_function(offsets, opacity_stops)
-
-    # p0 = gradient_element.matrix * Vector[*gradient_element.from, 1]
-    # p1 = gradient_element.matrix * Vector[*gradient_element.to, 1]
-
-    shading = prawn.ref!(
-      ShadingType: 2,
-      ColorSpace:  :DeviceGray,
-      Coords:      [*gradient_element.from, *gradient_element.to], # FIXME
-      # Coords:      [p0[0], p0[1], p1[0], p1[1]], # FIXME
-      Function:    shading_func,
-      Extend:      [true, true]
-    )
-
-    # transform = gradient_transform
-    transform = gradient_element.matrix.to_a[0..1].transpose.flatten
-
-    pattern = prawn.ref!(
-      PatternType: 2, # shading pattern
-      Shading:     shading,
-      Matrix:      transform
-    )
+    transform = gradient.matrix.to_a[0..1].transpose.flatten
 
     transparency_group = prawn.ref!(
       Type:      :XObject,
       Subtype:   :Form,
-      FormType:  1,
       BBox:      prawn.state.page.dimensions, # FIXME?
       Group:     {
         Type: :Group,
@@ -78,28 +57,24 @@ class Prawn::SVG::GradientRenderer
         CS:   :DeviceGray
       },
       Resources: {
-        Pattern: { # FIXME remove?
-          'TGP01' => pattern
-        },
-        Shading: {
-          'TGS01' => shading
+        Pattern: {
+          'TGP01' => {
+            PatternType: 2,
+            Matrix:      transform,
+            Shading:     {
+              ShadingType: gradient.type == :axial ? 2 : 3,
+              ColorSpace:  :DeviceGray,
+              Coords:      gradient_coordinates,
+              Function:    create_shading_function(offsets, opacity_stops),
+              Extend:      [true, true]
+            }
+          }
         }
       }
     )
 
     transparency_group.stream << begin
       box = PDF::Core.real_params(prawn.state.page.dimensions)
-
-      # <<~CMDS.strip
-      #   /TGS01 sh
-      # CMDS
-
-      # <<~CMDS.strip
-      #   /DeviceGray cs
-      #   0.5 scn
-      #   0.0 750.0 20.0 20.0 re
-      #   f
-      # CMDS
 
       <<~CMDS.strip
         /Pattern cs
@@ -121,38 +96,19 @@ class Prawn::SVG::GradientRenderer
   end
 
   def create_gradient_pattern
-    offsets = gradient_element.stops.map(&:offset)
-    color_stops = gradient_element.stops.map { |stop| prawn.send(:normalize_color, stop.color) }
-
-    shading_func = create_shading_function(offsets, color_stops)
-
-    transformation = gradient_transform
-
-    # puts [gradient_element.from, gradient_element.to].inspect
-    # puts transformation.inspect
-
-    # transformation = [92.30769230769229, 0.0, 0.0, 92.30769230769229, 18.46153846153846, -2892.315384615384]
-
-    coords =
-      if gradient_element.type == :axial
-        # [0, 0, x2 - x1, y2 - y1]
-        [*gradient_element.from, *gradient_element.to]
-      else
-        [0, 0, gradient_element.r1, x2 - x1, y2 - y1, gradient_element.r2]
-      end
-
-    shading = prawn.ref!(
-      ShadingType: gradient_element.type == :axial ? 2 : 3,
-      ColorSpace:  prawn.send(:color_space, gradient_element.stops.first.color),
-      Coords:      coords,
-      Function:    shading_func,
-      Extend:      [true, true]
-    )
+    offsets = gradient.stops.map(&:offset)
+    color_stops = gradient.stops.map { |stop| prawn.send(:normalize_color, stop.color) }
 
     prawn.ref!(
-      PatternType: 2, # shading pattern
-      Shading:     shading,
-      Matrix:      transformation
+      PatternType: 2,
+      Shading:     {
+        ShadingType: gradient.type == :axial ? 2 : 3,
+        ColorSpace:  prawn.send(:color_space, gradient.stops.first.color),
+        Coords:      gradient_coordinates,
+        Function:    create_shading_function(offsets, color_stops),
+        Extend:      [true, true]
+      },
+      Matrix:      gradient_transform
     )
   end
 
@@ -175,7 +131,7 @@ class Prawn::SVG::GradientRenderer
   end
 
   def gradient_transform
-    x1, y1 = prawn.send(:map_to_absolute, gradient_element.from)
+    x1, y1 = prawn.send(:map_to_absolute, gradient.from)
 
     tm = prawn.current_transformation_matrix_with_translation #(x1, y1)
 
@@ -185,7 +141,7 @@ class Prawn::SVG::GradientRenderer
       [0.0, 0.0, 1.0]
     ]
 
-    result = mat * gradient_element.matrix
+    result = mat * gradient.matrix
 
     result.to_a[0..1].transpose.flatten
   end
