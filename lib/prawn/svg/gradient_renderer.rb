@@ -50,7 +50,7 @@ class Prawn::SVG::GradientRenderer
     transparency_group = prawn.ref!(
       Type:      :XObject,
       Subtype:   :Form,
-      BBox:      prawn.state.page.dimensions, # FIXME?
+      BBox:      prawn.state.page.dimensions,
       Group:     {
         Type: :Group,
         S:    :Transparency,
@@ -102,14 +102,14 @@ class Prawn::SVG::GradientRenderer
 
     prawn.ref!(
       PatternType: 2,
+      Matrix:      matrix_for_pdf(gradient_transform.round(2)),
       Shading:     {
         ShadingType: gradient.type == :axial ? 2 : 3,
         ColorSpace:  prawn.send(:color_space, gradient.stops.first.color),
         Coords:      gradient_coordinates,
         Function:    create_shading_function(offsets, color_stops),
         Extend:      [true, true]
-      },
-      Matrix:      matrix_for_pdf(gradient_transform)
+      }
     )
   end
 
