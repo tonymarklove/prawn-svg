@@ -3,7 +3,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   ForRender = Struct.new(:key, :type, :from, :to, :r1, :r2, :stops, :matrix, keyword_init: true)
 
   attr_reader :parent_gradient
-  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops
+  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :transform_matrix
 
   TAG_NAME_TO_TYPE = {
     'linearGradient' => :linear,
@@ -56,8 +56,6 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   end
 
   private
-
-  attr_reader :transform_matrix
 
   def matrix_for_element(element)
     if units == :bounding_box

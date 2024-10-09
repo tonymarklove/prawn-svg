@@ -1,7 +1,7 @@
 class Prawn::SVG::GradientRenderer
   def initialize(prawn, type, gradient)
     @prawn = prawn
-    @type = type.to_sym
+    @type = type
     @gradient = gradient
   end
 

@@ -20,6 +20,14 @@ module Prawn
         { warnings: svg.document.warnings, width: svg.document.sizing.output_width,
           height: svg.document.sizing.output_height }
       end
+
+      def fill_svg_gradient(gradient)
+        Prawn::SVG::GradientRenderer.new(self, :fill, gradient).draw
+      end
+
+      def stroke_svg_gradient(gradient)
+        Prawn::SVG::GradientRenderer.new(self, :stroke, gradient).draw
+      end
     end
   end
 end
