@@ -29,6 +29,7 @@
     <linearGradient id="linear-6" href="#linear-base" x1="0" y1="200" x2="1" y2="200" gradientTransform="translate(29023.21 20) rotate(-90) scale(20 -167.5)" gradientUnits="userSpaceOnUse" />
     <linearGradient id="linear-7" href="#linear-base" gradientTransform="skewX(10)" />
     <linearGradient id="linear-8" href="#linear-base" gradientTransform="skewY(10) rotate(90)" />
+    <linearGradient id="linear-9" href="#linear-base" x1="0" y1="0" x2="20" y2="0" gradientUnits="userSpaceOnUse" spreadMethod="reflect" />
 
     <linearGradient id="transparent-linear-1" href="#transparent-linear-base" gradientTransform="translate(0.2 0)" x1="0" y1="0" x2="1" y2="0" />
     <linearGradient id="transparent-linear-2" href="#transparent-linear-base" x1="120" y1="50" x2="120" y2="30" gradientUnits="userSpaceOnUse" />
@@ -62,6 +63,7 @@
   <rect fill="url(#linear-6)" x="180" y="0" width="20" height="20"/>
   <rect fill="url(#linear-7)" x="210" y="0" width="20" height="20"/>
   <rect fill="url(#linear-8)" x="240" y="0" width="20" height="20"/>
+  <rect fill="url(#linear-9)" x="210" y="60" width="20" height="20"/>
 
   <g>
     <rect fill="url(#transparent-linear-base)" y="30" width="20" height="20" />
