@@ -12,6 +12,7 @@ class Prawn::SVG::Elements::Base
   include Prawn::SVG::Attributes::Space
 
   include Prawn::SVG::TransformParser
+  include Prawn::SVG::TransformUtils
 
   PAINT_TYPES = %w[fill stroke].freeze
   COMMA_WSP_REGEXP = Prawn::SVG::Elements::COMMA_WSP_REGEXP
@@ -192,7 +193,7 @@ class Prawn::SVG::Elements::Base
           add_call "#{type}_color", result.value
           true
         when Prawn::SVG::Elements::Gradient
-          add_call "#{type}_svg_gradient", result.gradient_for_element(self)
+          add_call "#{type}_svg_gradient", **result.gradient_arguments(self)
           true
         end
       end

@@ -21,7 +21,7 @@ describe Prawn::SVG::Attributes::Transform do
 
     it 'passes the transform and executes the returned matrix' do
       expect(element).to receive(:parse_transform_attribute).with(transform)
-      expect(element).to receive(:matrix_for_prawn).and_return([1, 2, 3, 4, 5, 6])
+      expect(element).to receive(:matrix_for_pdf).and_return([1, 2, 3, 4, 5, 6])
       expect(element).to receive(:add_call_and_enter).with('transformation_matrix', 1, 2, 3, 4, 5, 6)
 
       element.attributes['transform'] = transform
@@ -34,7 +34,7 @@ describe Prawn::SVG::Attributes::Transform do
 
     it 'does not execute any commands' do
       expect(element).to receive(:parse_transform_attribute).with(transform)
-      expect(element).to receive(:matrix_for_prawn).and_return([1, 0, 0, 1, 0, 0])
+      expect(element).to receive(:matrix_for_pdf).and_return([1, 0, 0, 1, 0, 0])
       expect(element).not_to receive(:add_call_and_enter)
 
       element.attributes['transform'] = transform
@@ -45,7 +45,7 @@ describe Prawn::SVG::Attributes::Transform do
   context 'when transform is blank' do
     it 'does nothing' do
       expect(element).not_to receive(:parse_transform_attribute)
-      expect(element).not_to receive(:matrix_for_prawn)
+      expect(element).not_to receive(:matrix_for_pdf)
       expect(element).not_to receive(:add_call_and_enter)
 
       subject

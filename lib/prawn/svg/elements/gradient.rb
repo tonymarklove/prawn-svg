@@ -1,7 +1,4 @@
 class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
-  GradientStop = Struct.new(:offset, :color, :opacity)
-  ForRender = Struct.new(:key, :type, :from, :to, :r1, :r2, :stops, :matrix, keyword_init: true)
-
   attr_reader :parent_gradient
   attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :transform_matrix
 
@@ -27,27 +24,23 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
     raise SkipElementQuietly # we don't want anything pushed onto the call stack
   end
 
-  def gradient_for_element(element)
+  def gradient_arguments(element)
     if type == :radial
-      ForRender.new(
-        key:    SecureRandom.hex(4),
-        type:   :radial,
+      {
         from:   [fx, fy],
         r1:     0,
         to:     [cx, cy],
         r2:     radius,
         stops:  stops,
         matrix: matrix_for_element(element)
-      )
+      }
     else
-      ForRender.new(
-        key:    SecureRandom.hex(4),
-        type:   :axial,
+      {
         from:   [x1, y1],
         to:     [x2, y2],
         stops:  stops,
         matrix: matrix_for_element(element)
-      )
+      }
     end
   end
 
@@ -60,7 +53,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   def matrix_for_element(element)
     if units == :bounding_box
       bounding_x1, bounding_y1, bounding_x2, bounding_y2 = element.bounding_box
-      return if bounding_y2.nil?
+      return svg_to_pdf_matrix if bounding_y2.nil?
 
       width = bounding_x2 - bounding_x1
       height = bounding_y1 - bounding_y2
@@ -149,10 +142,10 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       offset = percentage_or_proportion(child.attributes['offset']).clamp(0.0, 1.0)
 
       # Offsets must be strictly increasing (SVG 13.2.4)
-      offset = result.last.offset if result.last && result.last.offset > offset
+      offset = result.last[:offset] if result.last && result.last[:offset] > offset
 
       if (color = Prawn::SVG::Color.css_color_to_prawn_color(child.properties.stop_color))
-        result << GradientStop.new(offset, color, parse_opacity(child.properties.stop_opacity))
+        result << { offset: offset, color: color, opacity: parse_opacity(child.properties.stop_opacity) }
       end
     end
 
@@ -163,15 +156,15 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
       @stops = parent_gradient.stops
     else
-      if stops.first.offset.positive?
+      if stops.first[:offset].positive?
         start_stop = stops.first.dup
-        start_stop.offset = 0
+        start_stop[:offset] = 0
         stops.unshift(start_stop)
       end
 
-      if stops.last.offset < 1
+      if stops.last[:offset] < 1
         end_stop = stops.last.dup
-        end_stop.offset = 1
+        end_stop[:offset] = 1
         stops.push(end_stop)
       end
     end

@@ -68,10 +68,6 @@ module Prawn::SVG::TransformParser
     matrix
   end
 
-  def matrix_for_prawn(matrix)
-    matrix.to_a[0..1].transpose.flatten
-  end
-
   private
 
   def parse_css_method_calls(string)

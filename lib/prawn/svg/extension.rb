@@ -21,12 +21,12 @@ module Prawn
           height: svg.document.sizing.output_height }
       end
 
-      def fill_svg_gradient(gradient)
-        Prawn::SVG::GradientRenderer.new(self, :fill, gradient).draw
+      def fill_svg_gradient(**kwarguments)
+        Prawn::SVG::GradientRenderer.new(self, :fill, **kwarguments).draw
       end
 
-      def stroke_svg_gradient(gradient)
-        Prawn::SVG::GradientRenderer.new(self, :stroke, gradient).draw
+      def stroke_svg_gradient(**kwarguments)
+        Prawn::SVG::GradientRenderer.new(self, :stroke, **kwarguments).draw
       end
     end
   end
