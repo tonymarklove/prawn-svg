@@ -29,6 +29,7 @@ class Prawn::SVG::GradientRenderer
     prawn.page.resources[:Pattern] ||= {}
     prawn.page.resources[:Pattern]["PSVG-Pattern-#{key}"] = create_gradient_pattern
 
+    # Finally set the pattern with the drawing operator for fill/stroke.
     prawn.send(:set_color_space, draw_type, :Pattern)
     draw_operator = draw_type == :fill ? 'scn' : 'SCN'
     prawn.renderer.add_content("/PSVG-Pattern-#{key} #{draw_operator}")
