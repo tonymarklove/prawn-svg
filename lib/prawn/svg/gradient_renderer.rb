@@ -4,6 +4,8 @@ class Prawn::SVG::GradientRenderer
   def initialize(prawn, draw_type, from:, to:, stops:, matrix: nil, r1: nil, r2: nil, wrap: :pad)
     @prawn = prawn
     @draw_type = draw_type
+    @from = from
+    @to = to
 
     if r1
       @shading_type = 3
@@ -14,10 +16,7 @@ class Prawn::SVG::GradientRenderer
     end
 
     @stop_offsets, @color_stops, @opacity_stops = process_stop_arguments(stops)
-
     @gradient_matrix = matrix ? load_matrix(matrix) : Matrix.identity(3)
-
-    @repeat_count, @wrap_matrix = compute_wrapping(wrap, from, to, gradient_matrix)
     @wrap = wrap
   end
 
@@ -40,8 +39,8 @@ class Prawn::SVG::GradientRenderer
 
   private
 
-  attr_reader :prawn, :draw_type, :shading_type, :coordinates,
-    :stop_offsets, :color_stops, :opacity_stops, :gradient_matrix, :wrap, :repeat_count, :wrap_matrix
+  attr_reader :prawn, :draw_type, :shading_type, :coordinates, :from, :to,
+    :stop_offsets, :color_stops, :opacity_stops, :gradient_matrix, :wrap
 
   def key
     @key ||= Digest::SHA1.hexdigest([
@@ -78,8 +77,7 @@ class Prawn::SVG::GradientRenderer
   def create_transparency_graphics_state
     prawn.renderer.min_version(1.4)
 
-    bounds_x, bounds_y = prawn.bounds.anchor
-    transform = Matrix[[1, 0, bounds_x], [0, 1, bounds_y], [0, 0, 1]] * gradient_matrix
+    repeat_count, transform = compute_wrapping(wrap, from, to, current_pdf_translation * gradient_matrix)
 
     transparency_group = prawn.ref!(
       Type:      :XObject,
@@ -100,7 +98,8 @@ class Prawn::SVG::GradientRenderer
               ShadingType: shading_type,
               ColorSpace:  :DeviceGray,
               Coords:      coordinates,
-              Function:    create_shading_function(stop_offsets, opacity_stops),
+              Domain:      [0, repeat_count],
+              Function:    create_shading_function(stop_offsets, opacity_stops, wrap, repeat_count),
               Extend:      [true, true]
             }
           }
@@ -131,7 +130,7 @@ class Prawn::SVG::GradientRenderer
   end
 
   def create_gradient_pattern
-    transform = wrap_matrix * (current_pdf_transform * gradient_matrix).round(2)
+    repeat_count, transform = compute_wrapping(wrap, from, to, current_pdf_transform * gradient_matrix)
 
     prawn.ref!(
       PatternType: 2,
@@ -143,7 +142,6 @@ class Prawn::SVG::GradientRenderer
         Domain:      [0, repeat_count],
         Function:    create_shading_function(stop_offsets, color_stops, wrap, repeat_count),
         Extend:      [true, true]
-        # Background:  [1, 0, 1]
       }
     )
   end
@@ -195,6 +193,13 @@ class Prawn::SVG::GradientRenderer
     )
   end
 
+  def current_pdf_translation
+    @current_pdf_translation ||= begin
+      bounds_x, bounds_y = prawn.bounds.anchor
+      Matrix[[1, 0, bounds_x], [0, 1, bounds_y], [0, 0, 1]]
+    end
+  end
+
   def prawn_bounds_corners
     left, top = prawn.bounds.top_left
     right, bottom = prawn.bounds.bottom_right
@@ -208,9 +213,7 @@ class Prawn::SVG::GradientRenderer
   end
 
   def compute_wrapping(wrap, from, to, matrix)
-    return [1, Matrix.identity(3)] if wrap == :pad
-
-    matrix = current_pdf_transform * matrix
+    return [1, matrix] if wrap == :pad
 
     page_from = matrix * Vector[from[0], from[1], 1.0]
     page_to = matrix * Vector[to[0], to[1], 1.0]
@@ -226,10 +229,10 @@ class Prawn::SVG::GradientRenderer
 
     repeat_count = (t_max - t_min).ceil
 
-    transform = translation_matrix(page_from[0] - ab[0], page_from[1] - ab[1]) *
-                scale_matrix(repeat_count) *
-                translation_matrix(-page_from[0], -page_from[1])
+    wrap_transform = translation_matrix(page_from[0] - ab[0], page_from[1] - ab[1]) *
+                     scale_matrix(repeat_count) *
+                     translation_matrix(-page_from[0], -page_from[1])
 
-    [repeat_count, transform]
+    [repeat_count, wrap_transform * matrix]
   end
 end

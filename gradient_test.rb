@@ -10,11 +10,11 @@ input_file = 'gradient_test.svg'
 
 prawn_document = Prawn::Document.new(margin: 0, page_size: [page_width, page_height])
 
-# prawn_document.bounding_box([10, 790], width: page_width / 2, height: page_height / 2) do
+prawn_document.bounding_box([10, 790], width: page_width / 2, height: page_height / 2) do
 #   prawn_document.rotate(-10, origin: [page_width/2, page_height/2]) do
     prawn_document.svg(File.read(input_file), width: page_width, height: page_height)
 #   end
-# end
+end
 
 File.write('gradient_test_out.pdf', prawn_document.render)
 
