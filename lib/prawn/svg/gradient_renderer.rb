@@ -1,7 +1,7 @@
 class Prawn::SVG::GradientRenderer
   include Prawn::SVG::TransformUtils
 
-  def initialize(prawn, draw_type, from:, to:, stops:, matrix: nil, r1: nil, r2: nil)
+  def initialize(prawn, draw_type, from:, to:, stops:, matrix: nil, r1: nil, r2: nil, wrap: :pad)
     @prawn = prawn
     @draw_type = draw_type
 
@@ -16,6 +16,7 @@ class Prawn::SVG::GradientRenderer
     @stop_offsets, @color_stops, @opacity_stops = process_stop_arguments(stops)
 
     @gradient_matrix = load_matrix(matrix) || Matrix.identity(3)
+    @wrap = wrap
   end
 
   def draw
@@ -37,7 +38,8 @@ class Prawn::SVG::GradientRenderer
 
   private
 
-  attr_reader :prawn, :draw_type, :shading_type, :coordinates, :stop_offsets, :color_stops, :opacity_stops, :gradient_matrix
+  attr_reader :prawn, :draw_type, :shading_type, :coordinates,
+    :stop_offsets, :color_stops, :opacity_stops, :gradient_matrix, :wrap
 
   def key
     @key ||= Digest::SHA1.hexdigest([
@@ -127,21 +129,62 @@ class Prawn::SVG::GradientRenderer
   end
 
   def create_gradient_pattern
+    transform = gradient_transform.round(2)
+
+    # FIXME: for radial as well
+    a = transform * Vector[coordinates[0], coordinates[1], 1.0]
+    b = transform * Vector[coordinates[2], coordinates[3], 1.0]
+
+    ab = (b - a)
+
+    repeat_count = 1
+
+    ta = Matrix[[1.0, 0.0, -a[0]], [0.0, 1.0, -a[1]], [0.0, 0.0, 1.0]]
+    scale = Matrix[[repeat_count, 0.0, 0.0], [0.0, repeat_count, 0.0], [0.0, 0.0, 1.0]]
+    tb = Matrix[[1.0, 0.0, a[0] - ab[0]], [0.0, 1.0, a[1] - ab[1]], [0.0, 0.0, 1.0]]
+
+    # transform = tb * scale * ta * transform
+
     prawn.ref!(
       PatternType: 2,
-      Matrix:      matrix_for_pdf(gradient_transform.round(2)),
+      Matrix:      matrix_for_pdf(transform),
       Shading:     {
         ShadingType: shading_type,
         ColorSpace:  prawn.send(:color_space, color_stops.first),
         Coords:      coordinates,
-        Function:    create_shading_function(stop_offsets, color_stops),
+        Domain:      [0, repeat_count],
+        Function:    create_shading_function(stop_offsets, color_stops, wrap, repeat_count),
         Extend:      [true, true]
+        # Background:  [1, 0, 1]
       }
     )
   end
 
-  def create_shading_function(offsets, color_stops)
-    linear_funcs = color_stops.each_cons(2).map do |c0, c1|
+  def create_shading_function(offsets, stop_values, wrap = :pad, repeat_count = 1)
+    gradient_func = create_shading_function_for_stops(offsets, stop_values)
+
+    # Return the gradient function if there is no need to repeat.
+    return gradient_func if wrap == :pad
+
+    encode = repeat_count.times.with_object([]) do |num, memo|
+      if wrap == :reflect && num.even?
+        memo.push(1, 0)
+      else
+        memo.push(0, 1)
+      end
+    end
+
+    prawn.ref!(
+      FunctionType: 3, # stitching function
+      Domain:       [0, repeat_count],
+      Functions:    Array.new(repeat_count, gradient_func),
+      Bounds:       Range.new(1, repeat_count - 1).to_a,
+      Encode:       encode
+    )
+  end
+
+  def create_shading_function_for_stops(offsets, stop_values)
+    linear_funcs = stop_values.each_cons(2).map do |c0, c1|
       prawn.ref!(FunctionType: 2, Domain: [0.0, 1.0], C0: c0, C1: c1, N: 1.0)
     end
 

@@ -54,18 +54,18 @@
 
   <rect fill="#0f1941" width="260" height="173.33"/>
 
-<!--   <rect fill="url(#linear-base)" width="20" height="20" />
+  <rect fill="url(#linear-base)" width="20" height="20" />
   <rect fill="url(#linear-1)" x="30" y="0" width="20" height="20" />
-  <rect fill="url(#linear-2)" x="60" y="0" width="20" height="20"/> -->
+  <rect fill="url(#linear-2)" x="60" y="0" width="20" height="20"/>
   <rect fill="url(#linear-3)" x="90" y="0" width="20" height="20"/>
-<!--   <rect fill="url(#linear-4)" x="120" y="0" width="20" height="20"/>
+  <rect fill="url(#linear-4)" x="120" y="0" width="20" height="20"/>
   <rect fill="url(#linear-5)" x="150" y="0" width="20" height="20"/>
   <rect fill="url(#linear-6)" x="180" y="0" width="20" height="20"/>
   <rect fill="url(#linear-7)" x="210" y="0" width="20" height="20"/>
-  <rect fill="url(#linear-8)" x="240" y="0" width="20" height="20"/> -->
+  <rect fill="url(#linear-8)" x="240" y="0" width="20" height="20"/>
   <rect fill="url(#linear-9)" x="210" y="60" width="20" height="20"/>
 
-<!--   <g>
+  <g>
     <rect fill="url(#transparent-linear-base)" y="30" width="20" height="20" />
     <rect fill="url(#transparent-linear-1)" x="30" y="30" width="20" height="20" />
     <rect fill="url(#transparent-linear-2)" x="60" y="30" width="20" height="20"/>
@@ -81,5 +81,5 @@
   <rect fill="url(#radial-base)" x="30" y="60" width="10" height="20" />
   <rect fill="url(#radial-base)" x="60" y="60" width="20" height="10" />
   <rect fill="url(#radial-1)" x="90" y="60" width="20" height="20" />
-  <rect fill="url(#radial-2)" x="120" y="60" width="20" height="20" transform="rotate(45)" /> -->
+  <rect fill="url(#radial-2)" x="120" y="60" width="20" height="20" transform="rotate(45)" />
 </svg>

@@ -1,6 +1,6 @@
 class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
   attr_reader :parent_gradient
-  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :transform_matrix
+  attr_reader :x1, :y1, :x2, :y2, :cx, :cy, :fx, :fy, :radius, :units, :stops, :transform_matrix, :wrap
 
   TAG_NAME_TO_TYPE = {
     'linearGradient' => :linear,
@@ -13,6 +13,7 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
 
     @parent_gradient = document.gradients[href_attribute[1..]] if href_attribute && href_attribute[0] == '#'
     @transform_matrix = Matrix.identity(3)
+    @wrap = :pad
 
     assert_compatible_prawn_version
     load_gradient_configuration
@@ -32,14 +33,16 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
         to:     [cx, cy],
         r2:     radius,
         stops:  stops,
-        matrix: matrix_for_element(element)
+        matrix: matrix_for_element(element),
+        wrap:   wrap
       }
     else
       {
         from:   [x1, y1],
         to:     [x2, y2],
         stops:  stops,
-        matrix: matrix_for_element(element)
+        matrix: matrix_for_element(element),
+        wrap:   wrap
       }
     end
   end
@@ -91,8 +94,8 @@ class Prawn::SVG::Elements::Gradient < Prawn::SVG::Elements::Base
       @transform_matrix = parse_transform_attribute(transform, space: :svg)
     end
 
-    if (spread_method = derive_attribute('spreadMethod')) && spread_method != 'pad'
-      warnings << "prawn-svg only currently supports the 'pad' spreadMethod attribute value"
+    if (spread_method = derive_attribute('spreadMethod'))
+      @wrap = spread_method.to_sym
     end
   end
 
