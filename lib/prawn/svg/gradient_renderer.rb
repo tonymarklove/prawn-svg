@@ -220,8 +220,6 @@ class Prawn::SVG::GradientRenderer
     page_to = matrix * Vector[to[0], to[1], 1.0]
 
     ab = page_to - page_from
-    gradient_length = ab.magnitude
-    ab_dir = ab.normalize
 
     # Project each corner of the bounding box onto the line made by the
     # gradient. The formula for projecting a point C onto a line formed from
@@ -243,8 +241,12 @@ class Prawn::SVG::GradientRenderer
 
     repeat_count = (t_max - t_min).ceil
 
-    shift_count = t_min.negative? ? t_min.floor : t_min.ceil
-    delta = ab_dir * shift_count * gradient_length
+    delta = if shading_type == 2 # Linear
+              shift_count = t_min.negative? ? t_min.floor : t_min.ceil
+              ab.normalize * shift_count * ab.magnitude
+            else # Radial
+              []
+            end
 
     wrap_transform = translation_matrix(delta[0], delta[1]) *
                      translation_matrix(page_from[0], page_from[1]) *
