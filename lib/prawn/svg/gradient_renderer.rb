@@ -200,7 +200,7 @@ class Prawn::SVG::GradientRenderer
     end
   end
 
-  def prawn_bounds_corners
+  def bounding_box_corners
     left, top = prawn.bounds.top_left
     right, bottom = prawn.bounds.bottom_right
 
@@ -215,21 +215,39 @@ class Prawn::SVG::GradientRenderer
   def compute_wrapping(wrap, from, to, matrix)
     return [1, matrix] if wrap == :pad
 
+    # Transform the start and end points of the gradient into PDF page space.
     page_from = matrix * Vector[from[0], from[1], 1.0]
     page_to = matrix * Vector[to[0], to[1], 1.0]
 
     ab = page_to - page_from
+    gradient_length = ab.magnitude
+    ab_dir = ab.normalize
 
-    ts = prawn_bounds_corners.map do |x, y|
+    # Project each corner of the bounding box onto the line made by the
+    # gradient. The formula for projecting a point C onto a line formed from
+    # point A to point B is as follows:
+    #
+    # AB = B - A
+    # AC = C - A
+    # t = (AB dot AC) / (AB dot AB)
+    # P = A + (AB * t)
+    #
+    # We don't actually need the final point P, we only need the parameter "t",
+    # so that we know how many times to repeat the gradient.
+    t_for_corners = bounding_box_corners.map do |x, y|
       ac = Vector[x, y, 1.0] - page_from
       ab.dot(ac) / ab.dot(ab)
     end
 
-    t_min, t_max = ts.minmax
+    t_min, t_max = t_for_corners.minmax
 
     repeat_count = (t_max - t_min).ceil
 
-    wrap_transform = translation_matrix(page_from[0] - ab[0], page_from[1] - ab[1]) *
+    shift_count = t_min.negative? ? t_min.floor : t_min.ceil
+    delta = ab_dir * shift_count * gradient_length
+
+    wrap_transform = translation_matrix(delta[0], delta[1]) *
+                     translation_matrix(page_from[0], page_from[1]) *
                      scale_matrix(repeat_count) *
                      translation_matrix(-page_from[0], -page_from[1])
 
