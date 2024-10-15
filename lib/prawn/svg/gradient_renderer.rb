@@ -15,7 +15,9 @@ class Prawn::SVG::GradientRenderer
 
     @stop_offsets, @color_stops, @opacity_stops = process_stop_arguments(stops)
 
-    @gradient_matrix = load_matrix(matrix) || Matrix.identity(3)
+    @gradient_matrix = matrix ? load_matrix(matrix) : Matrix.identity(3)
+
+    @repeat_count, @wrap_matrix = compute_wrapping(wrap, from, to, gradient_matrix)
     @wrap = wrap
   end
 
@@ -39,7 +41,7 @@ class Prawn::SVG::GradientRenderer
   private
 
   attr_reader :prawn, :draw_type, :shading_type, :coordinates,
-    :stop_offsets, :color_stops, :opacity_stops, :gradient_matrix, :wrap
+    :stop_offsets, :color_stops, :opacity_stops, :gradient_matrix, :wrap, :repeat_count, :wrap_matrix
 
   def key
     @key ||= Digest::SHA1.hexdigest([
@@ -129,21 +131,7 @@ class Prawn::SVG::GradientRenderer
   end
 
   def create_gradient_pattern
-    transform = gradient_transform.round(2)
-
-    # FIXME: for radial as well
-    a = transform * Vector[coordinates[0], coordinates[1], 1.0]
-    b = transform * Vector[coordinates[2], coordinates[3], 1.0]
-
-    ab = (b - a)
-
-    repeat_count = 1
-
-    ta = Matrix[[1.0, 0.0, -a[0]], [0.0, 1.0, -a[1]], [0.0, 0.0, 1.0]]
-    scale = Matrix[[repeat_count, 0.0, 0.0], [0.0, repeat_count, 0.0], [0.0, 0.0, 1.0]]
-    tb = Matrix[[1.0, 0.0, a[0] - ab[0]], [0.0, 1.0, a[1] - ab[1]], [0.0, 0.0, 1.0]]
-
-    # transform = tb * scale * ta * transform
+    transform = wrap_matrix * (current_pdf_transform * gradient_matrix).round(2)
 
     prawn.ref!(
       PatternType: 2,
@@ -201,11 +189,47 @@ class Prawn::SVG::GradientRenderer
     )
   end
 
-  def gradient_transform
-    current_transform = load_matrix(
+  def current_pdf_transform
+    @current_pdf_transform ||= load_matrix(
       prawn.current_transformation_matrix_with_translation(*prawn.bounds.anchor)
     )
+  end
 
-    current_transform * gradient_matrix
+  def prawn_bounds_corners
+    left, top = prawn.bounds.top_left
+    right, bottom = prawn.bounds.bottom_right
+
+    [
+      [left, top],
+      [left, bottom],
+      [right, top],
+      [right, bottom]
+    ]
+  end
+
+  def compute_wrapping(wrap, from, to, matrix)
+    return [1, Matrix.identity(3)] if wrap == :pad
+
+    matrix = current_pdf_transform * matrix
+
+    page_from = matrix * Vector[from[0], from[1], 1.0]
+    page_to = matrix * Vector[to[0], to[1], 1.0]
+
+    ab = page_to - page_from
+
+    ts = prawn_bounds_corners.map do |x, y|
+      ac = Vector[x, y, 1.0] - page_from
+      ab.dot(ac) / ab.dot(ab)
+    end
+
+    t_min, t_max = ts.minmax
+
+    repeat_count = (t_max - t_min).ceil
+
+    transform = translation_matrix(page_from[0] - ab[0], page_from[1] - ab[1]) *
+                scale_matrix(repeat_count) *
+                translation_matrix(-page_from[0], -page_from[1])
+
+    [repeat_count, transform]
   end
 end

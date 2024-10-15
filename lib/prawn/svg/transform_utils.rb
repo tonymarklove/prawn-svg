@@ -16,4 +16,12 @@ module Prawn::SVG::TransformUtils
   def matrix_for_pdf(matrix)
     matrix.to_a[0..1].transpose.flatten
   end
+
+  def translation_matrix(x = 0, y = 0)
+    Matrix[[1.0, 0.0, x.to_f], [0.0, 1.0, y.to_f], [0.0, 0.0, 1.0]]
+  end
+
+  def scale_matrix(x = 1, y = x)
+    Matrix[[x.to_f, 0.0, 0.0], [0.0, y.to_f, 0.0], [0.0, 0.0, 1.0]]
+  end
 end
