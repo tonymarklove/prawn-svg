@@ -56,16 +56,12 @@ class Prawn::SVG::GradientRenderer
     transparency = false
 
     stops.each do |stop|
-      offset, color, opacity = if stop.is_a?(Hash)
-                                 [stop[:offset], stop[:color], stop[:opacity] || 1.0]
-                               else
-                                 [stop[0], stop[1], stop[2] || 1.0]
-                               end
+      opacity = stop[:opacity] || 1.0
 
       transparency = true if opacity < 1
 
-      stop_offsets << offset
-      color_stops << prawn.send(:normalize_color, color)
+      stop_offsets << stop[:offset]
+      color_stops << prawn.send(:normalize_color, stop[:color])
       opacity_stops << [opacity]
     end
 
@@ -152,13 +148,8 @@ class Prawn::SVG::GradientRenderer
     # Return the gradient function if there is no need to repeat.
     return gradient_func if wrap == :pad
 
-    encode = repeat_count.times.with_object([]) do |num, memo|
-      if wrap == :reflect && num.even?
-        memo.push(1, 0)
-      else
-        memo.push(0, 1)
-      end
-    end
+    even_odd_encode = wrap == :reflect ? [[1, 0], [0, 1]] : [[0, 1], [0, 1]]
+    encode = repeat_count.times.flat_map { |num| even_odd_encode[num % 2] }
 
     prawn.ref!(
       FunctionType: 3, # stitching function
