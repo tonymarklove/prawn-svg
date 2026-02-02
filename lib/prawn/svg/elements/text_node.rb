@@ -117,6 +117,9 @@ module Prawn::SVG
 
         opts = { size: size, at: [cursor.x, cursor.y + (y_offset || 0)] }
         opts[:rotate] = chunk.rotate if chunk.rotate
+        opts[:width] = 999_999_999
+        opts[:height] = 999_999_999
+        opts[:document] = prawn
 
         scaling =
           if chunk.fixed_width && component.current_length_adjust_is_scaling?
@@ -140,7 +143,17 @@ module Prawn::SVG
         prawn.horizontal_text_scaling(scaling) do
           prawn.character_spacing(spacing || component.letter_spacing_pixels || prawn.character_spacing) do
             prawn.text_rendering_mode(calculate_text_rendering_mode) do
-              prawn.draw_text(chunk.text, **opts)
+              # Annoyingly, deep inside Prawn::Text::Formatted::LineWrap, Prawn
+              # calls lstrip to remove leading whitespace. But we already
+              # chunked our text, so we want to see leading spaces.
+              text = leading_spaces_to_nbsp(chunk.text)
+
+              box = Prawn::Text::Box.new(text, **opts)
+              box.render(dry_run: true)
+              opts[:at] = [opts[:at][0], opts[:at][1] + box.ascender]
+
+              box = Prawn::Text::Box.new(text, **opts)
+              box.render
             end
           end
         end
@@ -151,6 +164,10 @@ module Prawn::SVG
         # to the end of our string.  See comment above for why this isn't quite right.
         cursor.x += spacing if parent_spacing
       end
+    end
+
+    def leading_spaces_to_nbsp(str)
+      str.sub(/\A\s+/) { |s| "\u00A0" * s.length }
     end
 
     def render_underline(prawn, size, cursor, y_offset, width)
