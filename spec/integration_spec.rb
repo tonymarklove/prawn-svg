@@ -94,6 +94,10 @@ describe 'Integration test' do
   describe 'sample file rendering' do
     files = Dir["#{root}/spec/sample_svg/*.svg"]
 
+    let(:ttf_directory) { Pathname.new(__dir__).join('sample_ttf') }
+    let(:open_sans_ttf) { ttf_directory.join('OpenSans-SemiboldItalic.ttf') }
+    let(:noto_sans_ttf) { ttf_directory.join('NotoSansJP-Regular.ttf') }
+
     it 'has at least 10 SVG sample files to test' do
       files.length.should >= 10
     end
@@ -104,6 +108,15 @@ describe 'Integration test' do
 
         warnings = nil
         Prawn::Document.generate("#{root}/spec/sample_output/#{File.basename file}.pdf") do |prawn|
+          prawn.font_families.update(
+            'Open Sans' => {
+              normal: open_sans_ttf.to_s
+            },
+            'Noto Sans' => {
+              normal: noto_sans_ttf.to_s
+            }
+          )
+
           r = prawn.svg File.read(file), at: [0, prawn.bounds.top], width: prawn.bounds.width,
             enable_file_requests_with_root: File.dirname(__FILE__) do |doc|
             doc.url_loader.add_to_cache(
