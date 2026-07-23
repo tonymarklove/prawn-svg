@@ -1,6 +1,7 @@
 class Prawn::SVG::Elements::Anchor < Prawn::SVG::Elements::Base
   def parse
-    state.anchor_href = href_attribute
+    href = href_attribute
+    state.anchor_href = href unless href.nil? || href.strip.empty?
   end
 
   def container?
